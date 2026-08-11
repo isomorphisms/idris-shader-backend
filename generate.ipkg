@@ -1,0 +1,11 @@
+package idris-glsl-es-generate
+version = 0.1.0
+
+sourcedir = "src"
+
+modules = Shader.Types, Shader.IR, Shader.Eval, Shader.Polynomial, Shader.GLSLES,
+          Example.Sphere, Generate
+
+main = Generate
+executable = idris-glsl-es-generate
+
