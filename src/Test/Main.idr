@@ -26,13 +26,13 @@ sphereField = polynomialExpr spherePolynomial point
 sphereGradient : Expr PointContext TVec3
 sphereGradient = gradientExpr spherePolynomial point
 
-pointValues : Double -> Double -> Double -> Values PointContext
+pointValues : Double → Double → Double → Values PointContext
 pointValues x y z = VCons [x, y, z] VNil
 
-approximately : Double -> Double -> Bool
+approximately : Double → Double → Bool
 approximately expected actual = abs (expected - actual) <= 0.000000001
 
-approximatelyVect : Vect n Double -> Vect n Double -> Bool
+approximatelyVect : Vect n Double → Vect n Double → Bool
 approximatelyVect [] [] = True
 approximatelyVect (x :: xs) (y :: ys) = approximately x y && approximatelyVect xs ys
 
@@ -41,11 +41,11 @@ record TestResult where
   label : String
   passed : Bool
 
-showResult : TestResult -> IO ()
+showResult : TestResult → IO ()
 showResult result =
   putStrLn ((if passed result then "PASS  " else "FAIL  ") ++ label result)
 
-shaderTests : String -> List TestResult
+shaderTests : String → List TestResult
 shaderTests source =
   [ MkTestResult "GLSL ES version directive" (Data.String.isPrefixOf "#version 300 es" source)
   , MkTestResult "typed fragment input declaration" (Data.String.isInfixOf "in vec2 v_uv;" source)
@@ -63,8 +63,8 @@ invalidNameRejected =
       badShader = MkFragmentShader badSchema
                     (Vec4 (FloatLit 0.0) (FloatLit 0.0) (FloatLit 0.0) (FloatLit 1.0))
    in case compileFragment badShader of
-        Left _ => True
-        Right _ => False
+        Left _ ⇒ True
+        Right _ ⇒ False
 
 duplicateNameRejected : Bool
 duplicateNameRejected =
@@ -75,24 +75,24 @@ duplicateNameRejected =
       badShader = MkFragmentShader badSchema
                     (Vec4 (FloatLit 0.0) (FloatLit 0.0) (FloatLit 0.0) (FloatLit 1.0))
    in case compileFragment badShader of
-        Left _ => True
-        Right _ => False
+        Left _ ⇒ True
+        Right _ ⇒ False
 
 covering
-goldenTest : String -> IO TestResult
+goldenTest : String → IO TestResult
 goldenTest generated = do
   file <- readFile "generated/sphere.frag"
   pure $ case file of
-    Left _ => MkTestResult "checked-in fragment golden exists" False
-    Right golden => MkTestResult "emitter matches checked-in fragment golden" (generated == golden)
+    Left _ ⇒ MkTestResult "checked-in fragment golden exists" False
+    Right golden ⇒ MkTestResult "emitter matches checked-in fragment golden" (generated == golden)
 
 covering
 main : IO ()
 main = case sphereFragment of
-  Left error => do
+  Left error ⇒ do
     putStrLn ("FAIL  shader generation: " ++ error)
     exitFailure
-  Right generated => do
+  Right generated ⇒ do
     golden <- goldenTest generated
     let tests =
           [ MkTestResult "sphere vanishes at (1,0,0)"

@@ -6,28 +6,28 @@ import Shader.IR
 
 %default total
 
-dotVect : Vect n Double -> Vect n Double -> Double
+dotVect : Vect n Double → Vect n Double → Double
 dotVect [] [] = 0.0
 dotVect (x :: xs) (y :: ys) = x * y + dotVect xs ys
 
-scaleVect : Double -> Vect n Double -> Vect n Double
-scaleVect scalar = map (\value => scalar * value)
+scaleVect : Double → Vect n Double → Vect n Double
+scaleVect scalar = map (\value ⇒ scalar * value)
 
-normalizeVect : Vect n Double -> Vect n Double
+normalizeVect : Vect n Double → Vect n Double
 normalizeVect values =
   let magnitude = sqrt (dotVect values values)
-   in map (\value => value / magnitude) values
+   in map (\value ⇒ value / magnitude) values
 
-clampDouble : Double -> Double -> Double -> Double
+clampDouble : Double → Double → Double → Double
 clampDouble value low high =
   if value < low then low else if value > high then high else value
 
-mixDouble : Double -> Double -> Double -> Double
+mixDouble : Double → Double → Double → Double
 mixDouble left right weight = left * (1.0 - weight) + right * weight
 
 ||| Pure reference evaluator for differential tests against a GPU result.
 public export
-eval : Values context -> Expr context ty -> Sem ty
+eval : Values context → Expr context ty → Sem ty
 eval _   (FloatLit value) = value
 eval _   (BoolLit value) = value
 eval env (Var position) = lookupValue position env

@@ -30,7 +30,7 @@ DecEq ValueTy where
   decEq (TVec n) (TVec m) with (decEq n m)
     decEq (TVec n) (TVec n) | Yes Refl = Yes Refl
     decEq (TVec n) (TVec m) | No contra =
-      No (\Refl => contra Refl)
+      No (\Refl ⇒ contra Refl)
 
 public export
 Show ValueTy where
@@ -63,10 +63,10 @@ record EntrySpec where
 
 ||| A typed operand in the backend's linear shader IR.
 public export
-data Operand : ValueTy -> Type where
-  OLocal : String -> Operand ty
-  OFloat : Double -> Operand TFloat
-  OBool : Bool -> Operand TBool
+data Operand : ValueTy → Type where
+  OLocal : String → Operand ty
+  OFloat : Double → Operand TFloat
+  OBool : Bool → Operand TBool
 
 public export
 record SomeOperand where
@@ -103,26 +103,26 @@ data VectorBinary = VAdd | VSub
 
 ||| A right-hand side whose Idris index is its GLSL result type.
 public export
-data Rhs : ValueTy -> Type where
-  RFloatUnary : FloatUnary -> Operand TFloat -> Rhs TFloat
-  RFloatBinary : FloatBinary -> Operand TFloat -> Operand TFloat -> Rhs TFloat
-  RFloatTernary : FloatTernary -> Operand TFloat -> Operand TFloat ->
-                  Operand TFloat -> Rhs TFloat
-  RComparison : Comparison -> Operand TFloat -> Operand TFloat -> Rhs TBool
-  RBoolUnary : BoolUnary -> Operand TBool -> Rhs TBool
-  RBoolBinary : BoolBinary -> Operand TBool -> Operand TBool -> Rhs TBool
-  RVec2 : Operand TFloat -> Operand TFloat -> Rhs (TVec 2)
-  RVec3 : Operand TFloat -> Operand TFloat -> Operand TFloat -> Rhs (TVec 3)
-  RVec4 : Operand TFloat -> Operand TFloat -> Operand TFloat ->
-          Operand TFloat -> Rhs (TVec 4)
-  RVectorBinary : VectorBinary -> Operand (TVec n) -> Operand (TVec n) ->
+data Rhs : ValueTy → Type where
+  RFloatUnary : FloatUnary → Operand TFloat → Rhs TFloat
+  RFloatBinary : FloatBinary → Operand TFloat → Operand TFloat → Rhs TFloat
+  RFloatTernary : FloatTernary → Operand TFloat → Operand TFloat →
+                  Operand TFloat → Rhs TFloat
+  RComparison : Comparison → Operand TFloat → Operand TFloat → Rhs TBool
+  RBoolUnary : BoolUnary → Operand TBool → Rhs TBool
+  RBoolBinary : BoolBinary → Operand TBool → Operand TBool → Rhs TBool
+  RVec2 : Operand TFloat → Operand TFloat → Rhs (TVec 2)
+  RVec3 : Operand TFloat → Operand TFloat → Operand TFloat → Rhs (TVec 3)
+  RVec4 : Operand TFloat → Operand TFloat → Operand TFloat →
+          Operand TFloat → Rhs (TVec 4)
+  RVectorBinary : VectorBinary → Operand (TVec n) → Operand (TVec n) →
                   Rhs (TVec n)
-  RScale : Operand TFloat -> Operand (TVec n) -> Rhs (TVec n)
-  RDot : Operand (TVec n) -> Operand (TVec n) -> Rhs TFloat
-  RLength : Operand (TVec n) -> Rhs TFloat
-  RNormalize : Operand (TVec n) -> Rhs (TVec n)
-  RComponent : Fin n -> Operand (TVec n) -> Rhs TFloat
-  RSelect : Operand TBool -> Operand ty -> Operand ty -> Rhs ty
+  RScale : Operand TFloat → Operand (TVec n) → Rhs (TVec n)
+  RDot : Operand (TVec n) → Operand (TVec n) → Rhs TFloat
+  RLength : Operand (TVec n) → Rhs TFloat
+  RNormalize : Operand (TVec n) → Rhs (TVec n)
+  RComponent : Fin n → Operand (TVec n) → Rhs TFloat
+  RSelect : Operand TBool → Operand ty → Operand ty → Rhs ty
 
 public export
 record Binding where
@@ -139,14 +139,14 @@ record FragmentProgram where
   result : Operand (TVec 4)
 
 public export
-expect : (wanted : ValueTy) -> SomeOperand -> Either String (Operand wanted)
+expect : (wanted : ValueTy) → SomeOperand → Either String (Operand wanted)
 expect wanted (PackOperand actual value) with (decEq wanted actual)
   expect wanted (PackOperand wanted value) | Yes Refl = Right value
   expect wanted (PackOperand actual value) | No _ =
     Left ("expected " ++ show wanted ++ ", received " ++ show actual)
 
 public export
-expectVector : SomeOperand -> Either String SomeVector
+expectVector : SomeOperand → Either String SomeVector
 expectVector (PackOperand (TVec n) value) = Right (PackVector n value)
 expectVector (PackOperand actual _) =
   Left ("expected a vector, received " ++ show actual)

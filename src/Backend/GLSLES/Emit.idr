@@ -8,7 +8,7 @@ import Data.String
 %default total
 
 public export
-glslType : ValueTy -> Either String String
+glslType : ValueTy → Either String String
 glslType TFloat = Right "float"
 glslType TBool = Right "bool"
 glslType (TVec 2) = Right "vec2"
@@ -16,7 +16,7 @@ glslType (TVec 3) = Right "vec3"
 glslType (TVec 4) = Right "vec4"
 glslType (TVec n) = Left ("GLSL ES has no vec" ++ show n ++ " value type")
 
-floatLiteral : Double -> String
+floatLiteral : Double → String
 floatLiteral value =
   let rendered = show value
       characters = unpack rendered
@@ -27,25 +27,25 @@ floatLiteral value =
 Aliases : Type
 Aliases = List (String, String)
 
-resolveAlias : Aliases -> String -> String
+resolveAlias : Aliases → String → String
 resolveAlias [] name = name
 resolveAlias ((source, target) :: rest) name =
   if source == name then target else resolveAlias rest name
 
-operandText : Aliases -> Operand ty -> String
+operandText : Aliases → Operand ty → String
 operandText aliases (OLocal name) = resolveAlias aliases name
 operandText _ (OFloat value) = floatLiteral value
 operandText _ (OBool True) = "true"
 operandText _ (OBool False) = "false"
 
-floatUnaryText : FloatUnary -> String -> String
+floatUnaryText : FloatUnary → String → String
 floatUnaryText FNeg value = "(-" ++ value ++ ")"
 floatUnaryText FAbs value = "abs(" ++ value ++ ")"
 floatUnaryText FSqrt value = "sqrt(" ++ value ++ ")"
 floatUnaryText FSin value = "sin(" ++ value ++ ")"
 floatUnaryText FCos value = "cos(" ++ value ++ ")"
 
-floatBinaryText : FloatBinary -> String -> String -> String
+floatBinaryText : FloatBinary → String → String → String
 floatBinaryText FAdd left right = "(" ++ left ++ " + " ++ right ++ ")"
 floatBinaryText FSub left right = "(" ++ left ++ " - " ++ right ++ ")"
 floatBinaryText FMul left right = "(" ++ left ++ " * " ++ right ++ ")"
@@ -53,27 +53,27 @@ floatBinaryText FDiv left right = "(" ++ left ++ " / " ++ right ++ ")"
 floatBinaryText FMin left right = "min(" ++ left ++ ", " ++ right ++ ")"
 floatBinaryText FMax left right = "max(" ++ left ++ ", " ++ right ++ ")"
 
-floatTernaryText : FloatTernary -> String -> String -> String -> String
+floatTernaryText : FloatTernary → String → String → String → String
 floatTernaryText FClamp value low high =
   "clamp(" ++ value ++ ", " ++ low ++ ", " ++ high ++ ")"
 floatTernaryText FMix left right weight =
   "mix(" ++ left ++ ", " ++ right ++ ", " ++ weight ++ ")"
 
-comparisonText : Comparison -> String -> String -> String
+comparisonText : Comparison → String → String → String
 comparisonText FLt left right = "(" ++ left ++ " < " ++ right ++ ")"
 comparisonText FLe left right = "(" ++ left ++ " <= " ++ right ++ ")"
 comparisonText FEq left right = "(" ++ left ++ " == " ++ right ++ ")"
 comparisonText FGe left right = "(" ++ left ++ " >= " ++ right ++ ")"
 comparisonText FGt left right = "(" ++ left ++ " > " ++ right ++ ")"
 
-componentText : Fin n -> String
+componentText : Fin n → String
 componentText index = case finToNat index of
-  0 => "x"
-  1 => "y"
-  2 => "z"
-  _ => "w"
+  0 ⇒ "x"
+  1 ⇒ "y"
+  2 ⇒ "z"
+  _ ⇒ "w"
 
-rhsText : Aliases -> Rhs ty -> String
+rhsText : Aliases → Rhs ty → String
 rhsText aliases (RFloatUnary operation value) =
   floatUnaryText operation (operandText aliases value)
 rhsText aliases (RFloatBinary operation left right) =
@@ -113,7 +113,7 @@ rhsText aliases (RSelect condition whenTrue whenFalse) =
   "(" ++ operandText aliases condition ++ " ? " ++ operandText aliases whenTrue ++
   " : " ++ operandText aliases whenFalse ++ ")"
 
-declaration : InterfaceVar -> Either String String
+declaration : InterfaceVar → Either String String
 declaration (MkInterfaceVar name FragmentInput TBool) =
   Right ("flat in bool " ++ name ++ ";")
 declaration (MkInterfaceVar name FragmentInput ty) = do
@@ -123,22 +123,22 @@ declaration (MkInterfaceVar name Uniform ty) = do
   rendered <- glslType ty
   Right ("uniform " ++ rendered ++ " " ++ name ++ ";")
 
-dumpInterface : InterfaceVar -> Either String String
+dumpInterface : InterfaceVar → Either String String
 dumpInterface (MkInterfaceVar name storage ty) = do
   rendered <- glslType ty
   let storageText = case storage of
-                         FragmentInput => "in"
-                         Uniform => "uniform"
+                         FragmentInput ⇒ "in"
+                         Uniform ⇒ "uniform"
   Right (name ++ " : " ++ storageText ++ " " ++ rendered)
 
-dumpBinding : Binding -> Either String String
+dumpBinding : Binding → Either String String
 dumpBinding (MkBinding ty name rhs) = do
   rendered <- glslType ty
   Right (name ++ " : " ++ rendered ++ " = " ++ rhsText [] rhs)
 
 ||| A stable, human-readable dump of the typed IR immediately before GLSL CSE.
 public export
-dumpFragmentIR : FragmentProgram -> Either String String
+dumpFragmentIR : FragmentProgram → Either String String
 dumpFragmentIR program = do
   arguments <- traverse dumpInterface (entryInterface (spec program))
   body <- traverse dumpBinding (bindings program)
@@ -146,25 +146,25 @@ dumpFragmentIR program = do
       output = "return " ++ operandText [] (result program)
   Right (unlines (header :: body ++ [output, ""]))
 
-identityAlias : Aliases -> Rhs ty -> Maybe String
+identityAlias : Aliases → Rhs ty → Maybe String
 identityAlias aliases (RSelect condition (OBool True) (OBool False)) =
   Just (operandText aliases condition)
 identityAlias _ _ = Nothing
 
-emitBindings : List Binding -> Aliases -> List (String, String) -> List String ->
+emitBindings : List Binding → Aliases → List (String, String) → List String →
                Either String (Aliases, List String)
 emitBindings [] aliases _ reversedLines = Right (aliases, reverse reversedLines)
 emitBindings (MkBinding ty name rhs :: rest) aliases cache reversedLines =
   case identityAlias aliases rhs of
-    Just existing => emitBindings rest ((name, existing) :: aliases) cache reversedLines
-    Nothing => do
+    Just existing ⇒ emitBindings rest ((name, existing) :: aliases) cache reversedLines
+    Nothing ⇒ do
       renderedTy <- glslType ty
       let renderedRhs = rhsText aliases rhs
           key = renderedTy ++ ":" ++ renderedRhs
       case lookup key cache of
-        Just existing =>
+        Just existing ⇒
           emitBindings rest ((name, existing) :: aliases) cache reversedLines
-        Nothing =>
+        Nothing ⇒
           let line = "  " ++ renderedTy ++ " " ++ name ++ " = " ++ renderedRhs ++ ";"
            in emitBindings rest ((name, name) :: aliases)
                                 ((key, name) :: cache) (line :: reversedLines)
@@ -172,7 +172,7 @@ emitBindings (MkBinding ty name rhs :: rest) aliases cache reversedLines =
 ||| Emit deterministic GLSL ES 3.00. Repeated pure ANF right-hand sides are
 ||| coalesced while preserving the readable temporary-based form.
 public export
-emitFragment : FragmentProgram -> Either String String
+emitFragment : FragmentProgram → Either String String
 emitFragment program = do
   declarations <- traverse declaration (entryInterface (spec program))
   (aliases, body) <- emitBindings (bindings program) [] [] []

@@ -15,28 +15,28 @@ record FragmentShader (context : List ShaderTy) where
 
 record CG a where
   constructor MkCG
-  runCG : Nat -> List String -> List (String, String) ->
+  runCG : Nat → List String → List (String, String) →
           (Nat, List String, List (String, String), a)
 
 Functor CG where
-  map f (MkCG action) = MkCG $ \next, lines, cache =>
+  map f (MkCG action) = MkCG $ \next, lines, cache ⇒
     let (next', lines', cache', value) = action next lines cache
      in (next', lines', cache', f value)
 
 Applicative CG where
-  pure value = MkCG $ \next, lines, cache => (next, lines, cache, value)
-  (MkCG function) <*> (MkCG argument) = MkCG $ \next, lines, cache =>
+  pure value = MkCG $ \next, lines, cache ⇒ (next, lines, cache, value)
+  (MkCG function) <*> (MkCG argument) = MkCG $ \next, lines, cache ⇒
     let (next', lines', cache', f) = function next lines cache
         (next'', lines'', cache'', value) = argument next' lines' cache'
      in (next'', lines'', cache'', f value)
 
 Monad CG where
-  (MkCG action) >>= continuation = MkCG $ \next, lines, cache =>
+  (MkCG action) >>= continuation = MkCG $ \next, lines, cache ⇒
     let (next', lines', cache', value) = action next lines cache
         MkCG following = continuation value
      in following next' lines' cache'
 
-floatLiteral : Double -> String
+floatLiteral : Double → String
 floatLiteral value =
   let rendered = show value
       characters = unpack rendered
@@ -44,39 +44,39 @@ floatLiteral value =
          then rendered
          else rendered ++ ".0"
 
-emitTemp : ShaderTy -> String -> CG String
-emitTemp ty rightHandSide = MkCG $ \next, reversedLines, cache =>
+emitTemp : ShaderTy → String → CG String
+emitTemp ty rightHandSide = MkCG $ \next, reversedLines, cache ⇒
   let key = glslType ty ++ ":" ++ rightHandSide
    in case Data.List.lookup key cache of
-        Just existing => (next, reversedLines, cache, existing)
-        Nothing =>
+        Just existing ⇒ (next, reversedLines, cache, existing)
+        Nothing ⇒
           let name = "_idris_t" ++ show next
               line = "  " ++ glslType ty ++ " " ++ name ++ " = " ++ rightHandSide ++ ";"
            in (S next, line :: reversedLines, (key, name) :: cache, name)
 
-unary : ShaderTy -> String -> CG String -> CG String
+unary : ShaderTy → String → CG String → CG String
 unary resultTy operator value = do
   value' <- value
   emitTemp resultTy (operator ++ value')
 
-binary : ShaderTy -> String -> CG String -> CG String -> CG String
+binary : ShaderTy → String → CG String → CG String → CG String
 binary resultTy operator left right = do
   left' <- left
   right' <- right
   emitTemp resultTy ("(" ++ left' ++ " " ++ operator ++ " " ++ right' ++ ")")
 
-call1 : ShaderTy -> String -> CG String -> CG String
+call1 : ShaderTy → String → CG String → CG String
 call1 resultTy function argument = do
   argument' <- argument
   emitTemp resultTy (function ++ "(" ++ argument' ++ ")")
 
-call2 : ShaderTy -> String -> CG String -> CG String -> CG String
+call2 : ShaderTy → String → CG String → CG String → CG String
 call2 resultTy function first second = do
   first' <- first
   second' <- second
   emitTemp resultTy (function ++ "(" ++ first' ++ ", " ++ second' ++ ")")
 
-call3 : ShaderTy -> String -> CG String -> CG String -> CG String -> CG String
+call3 : ShaderTy → String → CG String → CG String → CG String → CG String
 call3 resultTy function first second third = do
   first' <- first
   second' <- second
@@ -84,12 +84,12 @@ call3 resultTy function first second third = do
   emitTemp resultTy
     (function ++ "(" ++ first' ++ ", " ++ second' ++ ", " ++ third' ++ ")")
 
-swizzle : String -> CG String -> CG String
+swizzle : String → CG String → CG String
 swizzle component value = do
   value' <- value
   emitTemp TFloat (value' ++ "." ++ component)
 
-lower : {ty : ShaderTy} -> Schema context -> Expr context ty -> CG String
+lower : {ty : ShaderTy} → Schema context → Expr context ty → CG String
 lower _      (FloatLit value) = pure (floatLiteral value)
 lower _      (BoolLit True) = pure "true"
 lower _      (BoolLit False) = pure "false"
@@ -166,12 +166,12 @@ lower {ty} schema (Select condition whenTrue whenFalse) = do
   false' <- lower schema whenFalse
   emitTemp ty ("(" ++ condition' ++ " ? " ++ true' ++ " : " ++ false' ++ ")")
 
-asciiLetter : Char -> Bool
+asciiLetter : Char → Bool
 asciiLetter character =
   (character >= 'a' && character <= 'z') ||
   (character >= 'A' && character <= 'Z')
 
-identifierTail : Char -> Bool
+identifierTail : Char → Bool
 identifierTail character = asciiLetter character || isDigit character || character == '_'
 
 reservedWords : List String
@@ -188,10 +188,10 @@ reservedWords =
   , "uvec3", "uvec4", "lowp", "mediump", "highp", "precision", "sampler2D"
   , "sampler3D", "samplerCube", "struct" ]
 
-validateIdentifier : String -> Either String ()
+validateIdentifier : String → Either String ()
 validateIdentifier name = case unpack name of
-  [] => Left "GLSL identifier cannot be empty"
-  first :: rest =>
+  [] ⇒ Left "GLSL identifier cannot be empty"
+  first :: rest ⇒
     if not (asciiLetter first || first == '_')
        then Left ("invalid first character in GLSL identifier: " ++ name)
        else if not (all identifierTail rest)
@@ -204,10 +204,10 @@ validateIdentifier name = case unpack name of
                                        then Left ("GLSL keyword used as identifier: " ++ name)
                                        else Right ()
 
-validateSchema : Schema context -> Either String ()
+validateSchema : Schema context → Either String ()
 validateSchema = validate []
   where
-    validate : List String -> Schema remaining -> Either String ()
+    validate : List String → Schema remaining → Either String ()
     validate _ Empty = Right ()
     validate seen (Declare _ _ name rest) = do
       validateIdentifier name
@@ -215,19 +215,19 @@ validateSchema = validate []
          then Left ("duplicate GLSL interface identifier: " ++ name)
          else validate (name :: seen) rest
 
-declaration : ShaderTy -> Storage -> String -> String
+declaration : ShaderTy → Storage → String → String
 declaration TBool FragmentInput name = "flat in bool " ++ name ++ ";"
 declaration ty FragmentInput name = "in " ++ glslType ty ++ " " ++ name ++ ";"
 declaration ty Uniform name = "uniform " ++ glslType ty ++ " " ++ name ++ ";"
 
-declarations : Schema context -> List String
+declarations : Schema context → List String
 declarations Empty = []
 declarations (Declare ty storage name rest) =
   declaration ty storage name :: declarations rest
 
 ||| Lower a typed fragment expression to scalar-temporary GLSL ES 3.00 source.
 public export
-compileFragment : FragmentShader context -> Either String String
+compileFragment : FragmentShader context → Either String String
 compileFragment shader = do
   validateSchema (schema shader)
   let (_, reversedLines, _, result) = runCG (lower (schema shader) (color shader)) 0 [] []

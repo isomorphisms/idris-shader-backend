@@ -6,67 +6,67 @@ module Shader.Source
 ||| backend recovers the concrete width from the exported entry-point schema
 ||| and the primitive dataflow.
 public export
-data SVec : Nat -> Type where
+data SVec : Nat → Type where
 
 public export %extern
-vec2 : Double -> Double -> SVec 2
+vec2 : Double → Double → SVec 2
 
 public export %extern
-vec3 : Double -> Double -> Double -> SVec 3
+vec3 : Double → Double → Double → SVec 3
 
 public export %extern
-vec4 : Double -> Double -> Double -> Double -> SVec 4
+vec4 : Double → Double → Double → Double → SVec 4
 
 public export %extern
-x : SVec (S n) -> Double
+x : SVec (S n) → Double
 
 public export %extern
-y : SVec (S (S n)) -> Double
+y : SVec (S (S n)) → Double
 
 public export %extern
-z : SVec (S (S (S n))) -> Double
+z : SVec (S (S (S n))) → Double
 
 public export %extern
-w : SVec (S (S (S (S n)))) -> Double
+w : SVec (S (S (S (S n)))) → Double
 
 public export %extern
-vadd : SVec n -> SVec n -> SVec n
+vadd : SVec n → SVec n → SVec n
 
 public export %extern
-vsub : SVec n -> SVec n -> SVec n
+vsub : SVec n → SVec n → SVec n
 
 public export %extern
-scale : Double -> SVec n -> SVec n
+scale : Double → SVec n → SVec n
 
 public export %extern
-dot : SVec n -> SVec n -> Double
+dot : SVec n → SVec n → Double
 
 public export %extern
-length : SVec n -> Double
+length : SVec n → Double
 
 public export %extern
-normalize : SVec n -> SVec n
+normalize : SVec n → SVec n
 
 public export %extern
-absF : Double -> Double
+absF : Double → Double
 
 public export %extern
-sqrtF : Double -> Double
+sqrtF : Double → Double
 
 public export %extern
-sinF : Double -> Double
+sinF : Double → Double
 
 public export %extern
-cosF : Double -> Double
+cosF : Double → Double
 
 public export %extern
-minF : Double -> Double -> Double
+minF : Double → Double → Double
 
 public export %extern
-maxF : Double -> Double -> Double
+maxF : Double → Double → Double
 
 public export %extern
-clampF : Double -> Double -> Double -> Double
+clampF : Double → Double → Double → Double
 
 public export %extern
-mixF : Double -> Double -> Double -> Double
+mixF : Double → Double → Double → Double

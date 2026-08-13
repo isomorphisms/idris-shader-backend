@@ -19,15 +19,15 @@ record RawEntry where
   rawEntryName : String
   rawInterface : List InterfaceName
 
-parts : Char -> String -> List String
+parts : Char → String → List String
 parts delimiter value = forget (split (== delimiter) value)
 
-asciiLetter : Char -> Bool
+asciiLetter : Char → Bool
 asciiLetter character =
   (character >= 'a' && character <= 'z') ||
   (character >= 'A' && character <= 'Z')
 
-identifierTail : Char -> Bool
+identifierTail : Char → Bool
 identifierTail character =
   asciiLetter character || isDigit character || character == '_'
 
@@ -45,10 +45,10 @@ reservedWords =
   , "sampler2D", "sampler3D", "samplerCube", "struct" ]
 
 public export
-validateIdentifier : String -> Either String ()
+validateIdentifier : String → Either String ()
 validateIdentifier value = case unpack value of
-  [] => Left "GLSL identifier cannot be empty"
-  first :: rest =>
+  [] ⇒ Left "GLSL identifier cannot be empty"
+  first :: rest ⇒
     if not (asciiLetter first || first == '_')
        then Left ("invalid first character in GLSL identifier: " ++ value)
        else if not (all identifierTail rest)
@@ -61,21 +61,21 @@ validateIdentifier value = case unpack value of
                                        then Left ("GLSL keyword used as identifier: " ++ value)
                                        else Right ()
 
-parseStorage : String -> Either String Storage
+parseStorage : String → Either String Storage
 parseStorage "in" = Right FragmentInput
 parseStorage "uniform" = Right Uniform
 parseStorage value =
   Left ("unknown interface storage '" ++ value ++ "'; expected in or uniform")
 
-parseInterfaceName : String -> Either String InterfaceName
+parseInterfaceName : String → Either String InterfaceName
 parseInterfaceName value = case parts '=' value of
-  [name, storage] => do
+  [name, storage] ⇒ do
     validateIdentifier name
     kind <- parseStorage storage
     Right (MkInterfaceName name kind)
-  _ => Left ("invalid interface item '" ++ value ++ "'; expected name=in or name=uniform")
+  _ ⇒ Left ("invalid interface item '" ++ value ++ "'; expected name=in or name=uniform")
 
-firstDuplicate : List String -> Maybe String
+firstDuplicate : List String → Maybe String
 firstDuplicate [] = Nothing
 firstDuplicate (x :: xs) =
   if elem x xs then Just x else firstDuplicate xs
@@ -84,9 +84,9 @@ firstDuplicate (x :: xs) =
 ||| signature, so an entry looks like:
 |||   %export "glsles:fragment|v_uv=in,u_time=uniform"
 public export
-parseRawEntry : String -> Either String RawEntry
+parseRawEntry : String → Either String RawEntry
 parseRawEntry value = case parts '|' value of
-  [stage, interfaceText] =>
+  [stage, interfaceText] ⇒
     if stage /= "fragment"
        then Left "only fragment shader exports are supported"
        else do
@@ -94,11 +94,11 @@ parseRawEntry value = case parts '|' value of
                       then Right []
                       else traverse parseInterfaceName (parts ',' interfaceText)
          case firstDuplicate (map sourceName parsed) of
-           Nothing => Right (MkRawEntry "fragment" parsed)
-           Just name => Left ("duplicate GLSL interface name: " ++ name)
-  _ => Left "invalid glsles export; expected fragment|name=in,name=uniform"
+           Nothing ⇒ Right (MkRawEntry "fragment" parsed)
+           Just name ⇒ Left ("duplicate GLSL interface name: " ++ name)
+  _ ⇒ Left "invalid glsles export; expected fragment|name=in,name=uniform"
 
-attach : List InterfaceName -> List ValueTy -> Either String (List InterfaceVar)
+attach : List InterfaceName → List ValueTy → Either String (List InterfaceVar)
 attach [] [] = Right []
 attach (MkInterfaceName name storage :: names) (ty :: types) = do
   rest <- attach names types
@@ -108,7 +108,7 @@ attach names types =
         " arguments, but the Idris function has " ++ show (length types))
 
 public export
-makeEntrySpec : RawEntry -> List ValueTy -> ValueTy -> Either String EntrySpec
+makeEntrySpec : RawEntry → List ValueTy → ValueTy → Either String EntrySpec
 makeEntrySpec raw argumentTypes resultType =
   let names = rawInterface raw in
   if length names /= length argumentTypes
@@ -117,5 +117,5 @@ makeEntrySpec raw argumentTypes resultType =
      else do
        variables <- attach names argumentTypes
        case resultType of
-         TVec 4 => Right (MkEntrySpec (rawEntryName raw) variables resultType)
-         _ => Left ("fragment entry must return SVec 4, received " ++ show resultType)
+         TVec 4 ⇒ Right (MkEntrySpec (rawEntryName raw) variables resultType)
+         _ ⇒ Left ("fragment entry must return SVec 4, received " ++ show resultType)

@@ -5,19 +5,19 @@ import Shader.Source
 %default total
 
 %noinline
-square : Double -> Double
+square : Double → Double
 square value = value * value
 
 %noinline
-safeNormalize : SVec n -> SVec n
+safeNormalize : SVec n → SVec n
 safeNormalize value = scale (1.0 / maxF 0.00001 (length value)) value
 
 %noinline
-positive : Double -> Double
+positive : Double → Double
 positive value = if value > 0.0 then value else 0.0
 
 %export "glsles:fragment|v_uv=in,u_time=uniform"
-sphere : SVec 2 -> Double -> SVec 4
+sphere : SVec 2 → Double → SVec 4
 sphere uv time =
   let px = 1.35 * x uv
       py = 1.35 * y uv
