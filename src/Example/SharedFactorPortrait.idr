@@ -1,0 +1,19 @@
+module Example.SharedFactorPortrait
+
+import Shader.PhasePortrait
+import Shader.Source
+
+%default total
+
+%export "glsles:fragment|v_ndc=in,u_center=uniform,u_half_height=uniform,u_aspect=uniform,u_zero_count=uniform,u_pole_count=uniform,u_zeros=uniform,u_poles=uniform"
+shared_factor_portrait : SVec 2 -> SVec 2 -> Double -> Double -> Int -> Int -> SArray 64 (SVec 2) -> SArray 64 (SVec 2) -> SVec 4
+shared_factor_portrait ndc center half_height aspect zero_count pole_count zeros poles =
+  let point = vadd center (vec2 (x ndc * half_height * aspect)
+                                (y ndc * half_height))
+      color = wegert_rgb point
+                         (int_to_double zero_count) zeros
+                         (int_to_double pole_count) poles
+   in vec4 (x color) (y color) (z color) 1.0
+
+main : IO ()
+main = pure ()
