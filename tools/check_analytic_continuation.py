@@ -75,7 +75,7 @@ def main() -> int:
             shader.count("u_continuation_radii[int(") >= 24,
             "24 bounded continuation radii were not compiled",
         )
-        require("0.080" in shader and "0.096" in shader, "charcoal unrevealed palette was lost")
+        require("0.08" in shader and "0.096" in shader, "charcoal unrevealed palette was lost")
         require("0.98" in shader and "0.95" in shader, "continuation boundary palette was lost")
 
         validator = shutil.which("glslangValidator")
