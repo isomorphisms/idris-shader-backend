@@ -1,120 +1,180 @@
-# Idris2 → GLSL ES backend slice
+# Idris2 → GLSL ES backend
 
-This project contains an actual Idris2 code generator named `glsles`. It is
-registered through `Idris.Driver.mainWithCodegens`, consumes Idris ANF, and
-compiles a deliberately restricted first-order numerical subset to GLSL ES
-3.00 fragment shaders.
+This repository contains a real GLSL ES 3.00 code generator for a deliberately
+restricted numerical subset of Idris 2.
 
-It does not pretend that arbitrary Idris can run inside GLSL. Unsupported
-closures, recursive calls, heap-shaped data, IO, and partial application are
-rejected with backend errors.
+The useful path is:
 
 ```text
-ordinary restricted Idris source
-        │
-        ├─ inspect exported Idris type before erasure
-        │    SVec 2 → Double → SVec 4
-        │
-        ▼
-Idris2 ANF ── subset checking / helper specialization
-        ▼
-typed linear shader IR (vector width is Nat)
-        ▼
-temporary lowering / deterministic CSE
-        ▼
+ordinary Idris source
+        ↓
+Idris type checking
+        ↓
+Idris ANF (a simplified compiler representation)
+        ↓
+shader subset checking and first-order helper specialization
+        ↓
+typed linear shader representation
+        ↓
 GLSL ES 3.00 fragment shader
 ```
 
-The earlier embedded `Expr` compiler remains in the project as a small direct
-shader IR, pure evaluator, and correctness oracle. The compiler-facing path no
-longer requires users to construct that AST by hand.
+The restriction is intentional. A GPU fragment shader is not a general Idris
+runtime. Closures, general recursion, heap-shaped data, IO, and partial
+application are rejected rather than silently translated into something with
+different semantics.
 
-`src/Example/DiscReveal.idr` is a host-integration fixture for one supplied
-disc, not an implementation of analytic continuation. It turns the outside of
-the disc into subtly textured dark gray while leaving most of the interior
-transparent for a portrait pass beneath it. Its antialias transition stays
-inside the supplied radius, so it never reveals points outside the promised
-region. A negative radius is a host sentinel that makes the mask transparent
-everywhere. The fixture uses Wegert's `v_ndc` vertex contract, checked in
-`fixtures/wegert-fullscreen.vert`; a host will still need to package the asset,
-upload the uniforms, and draw it second with source-alpha blending.
+The compiler integration currently uses ordinary Idris 2. Moving the same
+backend behind Idriç/`edric` is a separate integration step once that compiler's
+surface language is settled.
 
-## What an input shader looks like
+## What already works
 
-`src/Example/CompilerSphere.idr` contains an ordinary Idris function:
+The backend reads shader argument and result types from the checked Idris
+signature before those types are erased. A declaration such as
 
 ```idris
 %export "glsles:fragment|v_uv=in,u_time=uniform"
 sphere : SVec 2 -> Double -> SVec 4
-sphere uv time =
-  let px = 1.35 * x uv
-      py = 1.35 * y uv
-      -- polynomial, gradient, normal and lighting ...
-   in vec4 red green blue 1.0
 ```
 
-The export annotation supplies only GLSL names and storage classes. The
-backend reads `vec2`, `float`, and `vec4` from the checked Idris signature
-before those types are erased. A duplicated textual type declaration cannot
-drift away from the Idris type.
+therefore becomes a `vec2` fragment input, a `float` uniform, and a `vec4`
+fragment result without a second handwritten type description.
 
-`Shader.Source.SVec n` carries vector width as an Idris index. Operations such
-as
+`SVec n` keeps vector width in the Idris type. For example,
 
 ```idris
 dot : SVec n -> SVec n -> Double
 ```
 
-therefore reject mismatched widths in Idris itself. The backend's internal IR
-also represents vectors as `TVec Nat`, rather than duplicating every operation
-for vec2, vec3, and vec4.
+cannot be called with a `SVec 2` and a `SVec 3`.
 
-## Accepted subset
+`SArray n a` is a fixed shader array, not an Idris heap container. Its length
+and element type survive into generated GLSL. It is currently accepted as a
+uniform, for example:
 
-- `Double` literals, arithmetic, negation, comparisons, `sin`, `cos`, and
-  `sqrt`
+```glsl
+uniform vec2 u_zeros[64];
+uniform float u_continuation_radii[24];
+```
+
+The accepted numerical operations now include:
+
+- `Double` arithmetic, negation, comparisons, and Boolean conditionals
+- `Int` uniforms where an integer count is needed, with explicit conversion to
+  shader floating-point arithmetic
 - `SVec 2`, `SVec 3`, and `SVec 4`
 - vector construction, components, addition, subtraction, scaling, dot,
   length, and normalization
-- scalar `abs`, `min`, `max`, `clamp`, and `mix`
-- `let` bindings and pure Boolean conditionals
-- saturated calls to first-order helper functions; their ANF bodies are
-  specialized into one fragment body
-- fragment inputs and uniforms described by the `%export` annotation
+- `abs`, `sqrt`, `sin`, `cos`, `min`, `max`, `clamp`, and `mix`
+- `floor`, `fract`, `log`, two-argument `atan`, `pow`, and `smoothstep`
+- fixed uniform arrays with typed indexing
+- `let` bindings and pure conditionals
+- saturated calls to first-order helper functions; their bodies are
+  specialized into the generated fragment
 
-The source API makes invalid component access fail during Idris checking: for
-example, `w` requires a vector of width at least four.
+## Real renderer examples
 
-## Explicitly rejected
+The backend is tested on several ordinary Idris shader sources rather than
+only on small synthetic expressions.
 
-- recursion, including otherwise total recursive data traversals
-- closures, higher-order calls, and partial application
+### Polynomial surface
+
+`src/Example/CompilerSphere.idr` exercises polynomial arithmetic, derivatives,
+normal construction, lighting, helper specialization, and repeated-expression
+elimination. It is the original Surfer-style compiler example.
+
+### Wegert phase portrait
+
+`src/Shader/PhasePortrait.idr` contains the shared rational-function portrait
+mathematics used by Wegert and analytic continuation:
+
+- up to 64 zeros and 64 poles
+- phase accumulation with two-argument `atan`
+- log-modulus accumulation
+- the established Wegert HCL constants
+- CIE L*u*v* to display sRGB conversion
+
+`src/Example/SharedFactorPortrait.idr` compiles that path into a complete
+fragment shader. The 64-factor bound is explicit and finite; it does not enable
+general recursion.
+
+### Analytic continuation
+
+`src/Shader/ContinuationOverlay.idr` adds the continuation-specific layer:
+
+- up to 24 continuation discs
+- revealed and unrevealed regions
+- disc boundaries
+- path segments
+- center marks
+- the charcoal woven unrevealed texture
+
+`src/Example/AnalyticContinuation.idr` combines that overlay with the shared
+Wegert phase portrait. Its generated fragment is validated and linked against
+`fixtures/wegert-fullscreen.vert` during the checks.
+
+The current generated continuation example covers the mathematical portrait
+and continuation overlay. The zero/pole marker drawings used by the Android
+apps are still a separate presentation layer.
+
+### Bounded Surfer root search
+
+`src/Shader/PolynomialRay.idr` proves that finite ray-root search can also be
+expressed through this backend without general recursion. It currently:
+
+- evaluates a degree-at-most-seven polynomial from eight fixed coefficients
+  using Horner form
+- checks 16 fixed intervals for the first sign change
+- performs 20 fixed bisection refinements
+
+`src/Example/SurferRootSearch.idr` compiles that search into a fragment shader.
+This is a backend capability test, not a complete real-root isolator: a simple
+sign-change search can miss even-multiplicity roots, so the final Surfer
+renderer still needs the appropriate robust root-isolation algorithm.
+
+### Disc mask
+
+`src/Example/DiscReveal.idr` remains as a small host-integration fixture for one
+supplied disc and the Wegert `v_ndc` vertex contract.
+
+## What is deliberately rejected
+
+The compiler currently rejects:
+
+- general recursion, including otherwise total recursive data traversals
+- closures, higher-order runtime calls, and partial application
 - lists, user constructors, and other heap-shaped runtime data
-- IO, crashes, holes, strings, arbitrary integers, and unsupported primitives
-- implicit or auto arguments on the exported shader entry
-- entry types outside `Double`, `Bool`, and `SVec 2` through `SVec 4`
+- IO, crashes, holes, strings, and unsupported primitives
+- implicit or auto arguments on an exported shader entry
+- dynamically sized shader arrays
 - fragment results other than `SVec 4`
 
-This boundary is intentional. Bounded renderer iteration/root search should be
-added as an explicit shader construct or a statically unrolled source form,
-not by silently accepting general recursion.
+Finite renderer work is written as explicit bounded shader computation instead
+of using general recursion. This keeps the GPU execution bound visible in the
+source and in the generated shader.
 
-## Build the backend
+One current lowering detail matters when writing shader source: both sides of
+an Idris conditional can be lowered into temporaries before the final GLSL
+ternary is emitted. Code therefore must not rely on a dead branch to protect an
+out-of-bounds array access or a division by zero.
 
-A self-hosting Idris2 0.8.0 or newer installation is required. Its `idris2`
-compiler API package must be installed; from the Idris2 source tree this is:
+## Build
+
+A self-hosting Idris 2 0.8.0 or newer installation is required, including its
+compiler API package. From an Idris 2 source tree:
 
 ```sh
 make install-api
 ```
 
-Then build the registered compiler:
+Build the registered compiler:
 
 ```sh
 make backend
 ```
 
-Compile the ordinary Idris sphere shader:
+Compile the sphere example:
 
 ```sh
 ./build/exec/idris2-glsles \
@@ -125,12 +185,10 @@ Compile the ordinary Idris sphere shader:
   -o compiler-sphere
 ```
 
-This writes `generated/compiler-sphere.frag`. The `make generate-compiler`
-target also writes the inspectable pre-CSE golden dump at
-`generated/compiler-sphere.ir`.
+The result is `generated/compiler-sphere.frag`.
 
-The compiler's ordinary `--dumpanf FILE` option exposes its input IR. The
-backend also exposes its own checked linear IR:
+The backend can also dump its checked linear shader representation before the
+final repeated-expression elimination pass:
 
 ```sh
 ./build/exec/idris2-glsles --cg glsles \
@@ -138,7 +196,9 @@ backend also exposes its own checked linear IR:
   --source-dir src src/Example/CompilerSphere.idr -o compiler-sphere
 ```
 
-## Test
+## Checks
+
+Run:
 
 ```sh
 make check
@@ -146,46 +206,57 @@ make check
 
 The checks cover:
 
-- the original pure evaluator and symbolic polynomial derivative oracle
-- direct typed-IR GLSL generation and its golden shader
-- ordinary Idris source → ANF → GLSL generation and its golden shader
-- specialization of deliberately non-inlined first-order helpers
-- conditional lowering and common-subexpression elimination
-- rejection of recursion, heap constructors, bad entry results, and bad
-  interface arity
-- an Idris type error for a `dot` product between `SVec 2` and `SVec 3`
-- structural GLSL checks and `glslangValidator` when available
+- the original pure evaluator and symbolic polynomial derivative reference
+- generated GLSL and typed shader representations compared with checked-in
+  expected outputs
+- ordinary Idris source through the complete compiler path
+- first-order helper specialization
+- conditionals and repeated-expression elimination
+- scalar shader operations used by the phase portrait
+- fixed scalar and vector uniform arrays
+- the full 64-zero/64-pole Wegert portrait
+- the 24-step analytic-continuation overlay and vertex/fragment linking
+- the bounded Surfer polynomial root-search example
+- rejection of recursion, heap constructors, bad results, bad interfaces, and
+  mismatched vector widths
+- GLSL syntax validation with the external Khronos validator when available
 
 ## Source map
 
-- `src/Shader/Source.idr` — indexed source-level vector API and shader
+- `src/Shader/Source.idr` — source-level shader vectors, fixed arrays, and
   primitives
-- `src/Backend/GLSLES/Signature.idr` — reads argument/result dimensions from
-  checked Idris types before erasure
-- `src/Backend/GLSLES/Interface.idr` — `%export` interface parser and name
-  validation
-- `src/Backend/GLSLES/IR.idr` — typed linear shader IR with `TVec Nat`
-- `src/Backend/GLSLES/Lower.idr` — ANF subset checker, type inference, helper
-  specialization, and lowering
-- `src/Backend/GLSLES/Emit.idr` — GLSL ES emission and CSE
-- `src/Backend/GLSLES/Codegen.idr` — Idris2 `Codegen` implementation
-- `src/Backend/GLSLES/Main.idr` — `idris2-glsles` compiler executable
-- `src/Example/CompilerSphere.idr` — ordinary Idris compiler example
-- `src/Example/DiscReveal.idr` — generated one-disc reveal-mask fixture
-- `src/Shader/DiscReveal.idr` — pure, tested mask semantics used by the fixture
-- `generated/compiler-sphere.ir` — checked typed-IR dump for that example
-- `generated/disc-reveal.frag` — generated GLSL for the host fixture
-- `fixtures/wegert-fullscreen.vert` — matching vertex-stage contract
-- `src/Shader/IR.idr` / `Eval.idr` / `Polynomial.idr` — direct typed IR and
-  reference semantics
-- `src/Test/Backend/` — accepted/rejected compiler fixtures
+- `src/Backend/GLSLES/Signature.idr` — reads checked Idris argument and result
+  types
+- `src/Backend/GLSLES/Interface.idr` — parses exported shader names and storage
+  classes
+- `src/Backend/GLSLES/IR.idr` — typed linear shader representation
+- `src/Backend/GLSLES/Lower.idr` — checks the supported subset and lowers Idris
+  ANF into shader operations
+- `src/Backend/GLSLES/Emit.idr` — emits GLSL ES and removes repeated pure
+  expressions
+- `src/Backend/GLSLES/Codegen.idr` — Idris 2 code-generator registration
+- `src/Backend/GLSLES/Main.idr` — compiler executable
+- `src/Shader/PhasePortrait.idr` — shared Wegert/continuation portrait math
+- `src/Shader/ContinuationOverlay.idr` — continuation reveal/path layer
+- `src/Shader/PolynomialRay.idr` — bounded polynomial ray-search primitives
+- `src/Example/CompilerSphere.idr` — polynomial surface example
+- `src/Example/SharedFactorPortrait.idr` — 64-factor Wegert portrait example
+- `src/Example/AnalyticContinuation.idr` — combined continuation example
+- `src/Example/SurferRootSearch.idr` — bounded Surfer root-search example
+- `fixtures/wegert-fullscreen.vert` — matching Wegert fullscreen vertex stage
+- `src/Test/Backend/` — accepted and rejected compiler fixtures
 
 ## Current boundary
 
-The completed path ends at validated and program-linked fragment source. The
-one-disc fixture gives the Android host a concrete generated shader without
-claiming continuation, general recursion, or dynamic factor storage. Asset
-packaging, uniform and blend-state plumbing, frame presentation, and GPU pixel
-comparison remain host integration. Fixed uniform arrays and explicit bounded
-folds are the next backend layer needed for the full Wegert factor portrait;
-they should not enter through general recursion.
+The backend now reaches validated GLSL for all three relevant numerical
+families: polynomial surface work, Wegert rational phase portraits, and the
+analytic-continuation overlay. The remaining work is mostly renderer-specific:
+
+- zero/pole marker presentation for exact Wegert/continuation visual parity
+- a robust root-isolation strategy for the full Surfer renderer
+- Android host asset/uniform/frame integration where an app still uses
+  handwritten GLSL
+- eventual Idriç/`edric` compiler integration
+
+General recursion and arbitrary heap data are not required for those next
+steps and remain outside the shader subset.
