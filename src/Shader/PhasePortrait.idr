@@ -124,6 +124,7 @@ rational_measure point zero_count zeros pole_count poles =
       pole_measure = factor_sum_64 point pole_count poles
    in vsub zero_measure pole_measure
 
+public export
 wegert_rgb : SVec 2 -> Double -> SArray 64 (SVec 2) -> Double -> SArray 64 (SVec 2) -> SVec 3
 wegert_rgb point zero_count zeros pole_count poles =
   let measure = rational_measure point zero_count zeros pole_count poles
