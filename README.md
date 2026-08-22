@@ -29,6 +29,16 @@ The earlier embedded `Expr` compiler remains in the project as a small direct
 shader IR, pure evaluator, and correctness oracle. The compiler-facing path no
 longer requires users to construct that AST by hand.
 
+`src/Example/DiscReveal.idr` is a host-integration fixture for one supplied
+disc, not an implementation of analytic continuation. It turns the outside of
+the disc into subtly textured dark gray while leaving most of the interior
+transparent for a portrait pass beneath it. Its antialias transition stays
+inside the supplied radius, so it never reveals points outside the promised
+region. A negative radius is a host sentinel that makes the mask transparent
+everywhere. The fixture uses Wegert's `v_ndc` vertex contract, checked in
+`fixtures/wegert-fullscreen.vert`; a host will still need to package the asset,
+upload the uniforms, and draw it second with source-alpha blending.
+
 ## What an input shader looks like
 
 `src/Example/CompilerSphere.idr` contains an ordinary Idris function:
@@ -161,14 +171,21 @@ The checks cover:
 - `src/Backend/GLSLES/Codegen.idr` — Idris2 `Codegen` implementation
 - `src/Backend/GLSLES/Main.idr` — `idris2-glsles` compiler executable
 - `src/Example/CompilerSphere.idr` — ordinary Idris compiler example
+- `src/Example/DiscReveal.idr` — generated one-disc reveal-mask fixture
+- `src/Shader/DiscReveal.idr` — pure, tested mask semantics used by the fixture
 - `generated/compiler-sphere.ir` — checked typed-IR dump for that example
+- `generated/disc-reveal.frag` — generated GLSL for the host fixture
+- `fixtures/wegert-fullscreen.vert` — matching vertex-stage contract
 - `src/Shader/IR.idr` / `Eval.idr` / `Polynomial.idr` — direct typed IR and
   reference semantics
 - `src/Test/Backend/` — accepted/rejected compiler fixtures
 
 ## Current boundary
 
-The completed path ends at validated fragment source. Android EGL/OpenGL ES
-context creation, shader upload/link diagnostics, frame presentation, and GPU
-differential execution remain host integration. Bounded ray construction,
-root search, and surface-hit selection remain the next renderer layer.
+The completed path ends at validated and program-linked fragment source. The
+one-disc fixture gives the Android host a concrete generated shader without
+claiming continuation, general recursion, or dynamic factor storage. Asset
+packaging, uniform and blend-state plumbing, frame presentation, and GPU pixel
+comparison remain host integration. Fixed uniform arrays and explicit bounded
+folds are the next backend layer needed for the full Wegert factor portrait;
+they should not enter through general recursion.

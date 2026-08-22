@@ -53,6 +53,8 @@ def main() -> int:
     require(BACKEND.is_file(), "backend executable is missing; run make backend")
     golden = ROOT / "generated" / "compiler-sphere.frag"
     golden_ir = ROOT / "generated" / "compiler-sphere.ir"
+    reveal_golden = ROOT / "generated" / "disc-reveal.frag"
+    reveal_golden_ir = ROOT / "generated" / "disc-reveal.ir"
 
     with tempfile.TemporaryDirectory(prefix="idris-glsles-") as directory:
         temporary = Path(directory)
@@ -95,6 +97,37 @@ def main() -> int:
             )
             raise AssertionError("compiler shader differs from golden:\n" + difference)
 
+        reveal_ir_dump = temporary / "disc-reveal.ir"
+        reveal = compile_source(
+            "src/Example/DiscReveal.idr",
+            temporary,
+            "disc-reveal",
+            dump_ir=reveal_ir_dump,
+        )
+        require(reveal.returncode == 0, "disc reveal shader failed:\n" + reveal.stdout)
+        reveal_path = temporary / "disc-reveal.frag"
+        require(reveal_path.is_file(), "backend did not write disc-reveal.frag")
+        require(reveal_ir_dump.is_file(), "backend did not dump disc-reveal.ir")
+        reveal_source = reveal_path.read_text()
+        expected_reveal = reveal_golden.read_text()
+        reveal_ir = reveal_ir_dump.read_text()
+        expected_reveal_ir = reveal_golden_ir.read_text()
+        required_interface = [
+            "in vec2 v_ndc;",
+            "uniform vec2 u_center;",
+            "uniform float u_half_height;",
+            "uniform float u_aspect;",
+            "uniform vec2 u_disc_center;",
+            "uniform float u_disc_radius;",
+            "uniform vec2 u_resolution;",
+        ]
+        for declaration in required_interface:
+            require(declaration in reveal_source, "disc reveal interface lost " + declaration)
+        require("sin(" in reveal_source, "dark-gray reveal texture was not emitted")
+        require(" ? 0.0 : " in reveal_source, "negative-radius no-mask sentinel was not emitted")
+        require(reveal_source == expected_reveal, "disc reveal shader differs from golden")
+        require(reveal_ir == expected_reveal_ir, "disc reveal IR differs from golden")
+
         failures = [
             (
                 "src/Test/Backend/BadResult.idr",
@@ -135,7 +168,7 @@ def main() -> int:
             "dimension mismatch did not report both widths:\n" + dimensions.stdout,
         )
 
-    print("backend checks passed: source lowering, golden, four rejections, dimension proof")
+    print("backend checks passed: source lowering, two goldens, four rejections, dimension proof")
     return 0
 
 
