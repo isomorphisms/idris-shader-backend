@@ -18,6 +18,10 @@ generate-compiler: backend
 		--directive dump-ir=generated/compiler-sphere.ir \
 		--source-dir src --output-dir generated \
 		src/Example/CompilerSphere.idr -o compiler-sphere
+	$(IDRIS2_GLSLES) --cg glsles \
+		--directive dump-ir=generated/disc-reveal.ir \
+		--source-dir src --output-dir generated \
+		src/Example/DiscReveal.idr -o disc-reveal
 
 test:
 	$(IDRIS2) --build tests.ipkg
@@ -28,7 +32,7 @@ backend-test: backend
 
 check: generate test backend-test
 	python3 tools/check_glsl.py generated/fullscreen.vert generated/sphere.frag \
-		generated/compiler-sphere.frag
+		generated/compiler-sphere.frag generated/disc-reveal.frag
 
 clean:
 	$(IDRIS2) --clean idris-glsl-es.ipkg

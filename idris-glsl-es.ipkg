@@ -4,5 +4,5 @@ version = 0.1.0
 sourcedir = "src"
 
 modules = Shader.Types, Shader.IR, Shader.Eval, Shader.Polynomial, Shader.GLSLES,
-          Shader.Source,
+          Shader.Source, Shader.DiscReveal,
           Example.Sphere

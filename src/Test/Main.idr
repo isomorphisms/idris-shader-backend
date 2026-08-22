@@ -8,6 +8,7 @@ import System.File
 import Shader.Types
 import Shader.IR
 import Shader.Eval
+import Shader.DiscReveal
 import Shader.Polynomial
 import Shader.GLSLES
 import Example.Sphere
@@ -107,6 +108,19 @@ main = case sphereFragment of
                                  (eval (pointValues 1.0 2.0 3.0) sphereGradient))
           , MkTestResult "GLSL keyword rejected as variable name" invalidNameRejected
           , MkTestResult "duplicate interface name rejected" duplicateNameRejected
+          , MkTestResult "negative disc radius removes the mask"
+              (approximately 0.0 (disc_reveal_alpha 100.0 (-1.0) 0.1))
+          , MkTestResult "disc interior is transparent"
+              (approximately 0.0 (disc_reveal_alpha 0.5 1.0 0.1))
+          , MkTestResult "disc fade stays inside the radius"
+              (approximately 0.5 (disc_reveal_alpha 0.95 1.0 0.1))
+          , MkTestResult "disc boundary is fully obscured"
+              (approximately 1.0 (disc_reveal_alpha 1.0 1.0 0.1))
+          , MkTestResult "disc exterior is fully obscured"
+              (approximately 1.0 (disc_reveal_alpha 1.05 1.0 0.1))
+          , MkTestResult "dark mask stays within its gray range"
+              (approximately 0.035 (disc_reveal_gray (-1.0)) &&
+               approximately 0.055 (disc_reveal_gray 1.0))
           ] ++ shaderTests generated ++ [golden]
     traverse_ showResult tests
     if all passed tests
