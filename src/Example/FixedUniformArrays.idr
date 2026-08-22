@@ -20,8 +20,8 @@ fixed_uniform_arrays point count points weights =
         if 1.0 < count_value
            then weight_1 * length (vsub point point_1)
            else 0.0
-      total = contribution_0 + contribution_1
-   in vec4 total weight_0 weight_1 1.0
+      total_value = contribution_0 + contribution_1
+   in vec4 total_value weight_0 weight_1 1.0
 
 main : IO ()
 main = pure ()
