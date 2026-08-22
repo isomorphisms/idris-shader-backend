@@ -8,6 +8,18 @@ module Shader.Source
 public export
 data SVec : Nat -> Type where
 
+||| A fixed-length shader array. This is an interface type rather than an
+||| Idris heap container: the GLSL backend admits it only where it can preserve
+||| the length and element type in generated shader code.
+public export
+data SArray : Nat -> Type -> Type where
+
+public export %extern
+array_at : SArray n a -> Double -> a
+
+public export %extern
+int_to_double : Int -> Double
+
 public export %extern
 vec2 : Double -> Double -> SVec 2
 
