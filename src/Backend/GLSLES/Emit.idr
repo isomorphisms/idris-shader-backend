@@ -7,14 +7,27 @@ import Data.String
 
 %default total
 
+arrayElementType : ArrayElementTy -> Either String String
+arrayElementType AFloat = Right "float"
+arrayElementType ABool = Right "bool"
+arrayElementType AInt = Right "int"
+arrayElementType (AVec 2) = Right "vec2"
+arrayElementType (AVec 3) = Right "vec3"
+arrayElementType (AVec 4) = Right "vec4"
+arrayElementType (AVec n) = Left ("GLSL ES has no vec" ++ show n ++ " array element type")
+
 public export
 glslType : ValueTy -> Either String String
 glslType TFloat = Right "float"
 glslType TBool = Right "bool"
+glslType TInt = Right "int"
 glslType (TVec 2) = Right "vec2"
 glslType (TVec 3) = Right "vec3"
 glslType (TVec 4) = Right "vec4"
 glslType (TVec n) = Left ("GLSL ES has no vec" ++ show n ++ " value type")
+glslType (TArray n elementTy) = do
+  rendered <- arrayElementType elementTy
+  Right (rendered ++ "[" ++ show n ++ "]")
 
 floatLiteral : Double -> String
 floatLiteral value =
@@ -96,6 +109,9 @@ rhsText aliases (RBoolBinary BAnd left right) =
   "(" ++ operandText aliases left ++ " && " ++ operandText aliases right ++ ")"
 rhsText aliases (RBoolBinary BOr left right) =
   "(" ++ operandText aliases left ++ " || " ++ operandText aliases right ++ ")"
+rhsText aliases (RIntToFloat value) = "float(" ++ operandText aliases value ++ ")"
+rhsText aliases (RArrayIndex array index) =
+  operandText aliases array ++ "[int(" ++ operandText aliases index ++ ")]"
 rhsText aliases (RVec2 x y) =
   "vec2(" ++ operandText aliases x ++ ", " ++ operandText aliases y ++ ")"
 rhsText aliases (RVec3 x y z) =
@@ -121,11 +137,18 @@ rhsText aliases (RSelect condition whenTrue whenFalse) =
   " : " ++ operandText aliases whenFalse ++ ")"
 
 declaration : InterfaceVar -> Either String String
+declaration (MkInterfaceVar name FragmentInput (TArray _ _)) =
+  Left ("fixed shader arrays must be uniforms: " ++ name)
 declaration (MkInterfaceVar name FragmentInput TBool) =
   Right ("flat in bool " ++ name ++ ";")
+declaration (MkInterfaceVar name FragmentInput TInt) =
+  Right ("flat in int " ++ name ++ ";")
 declaration (MkInterfaceVar name FragmentInput ty) = do
   rendered <- glslType ty
   Right ("in " ++ rendered ++ " " ++ name ++ ";")
+declaration (MkInterfaceVar name Uniform (TArray n elementTy)) = do
+  rendered <- arrayElementType elementTy
+  Right ("uniform " ++ rendered ++ " " ++ name ++ "[" ++ show n ++ "];")
 declaration (MkInterfaceVar name Uniform ty) = do
   rendered <- glslType ty
   Right ("uniform " ++ rendered ++ " " ++ name ++ ";")
