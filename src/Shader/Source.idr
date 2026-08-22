@@ -60,13 +60,13 @@ public export %extern
 cosF : Double -> Double
 
 public export %extern
-floor_f : Double -> Double
+floorF : Double -> Double
 
 public export %extern
-fract_f : Double -> Double
+fractF : Double -> Double
 
 public export %extern
-log_f : Double -> Double
+logF : Double -> Double
 
 public export %extern
 minF : Double -> Double -> Double
@@ -75,10 +75,10 @@ public export %extern
 maxF : Double -> Double -> Double
 
 public export %extern
-atan2_f : Double -> Double -> Double
+atan2F : Double -> Double -> Double
 
 public export %extern
-pow_f : Double -> Double -> Double
+powF : Double -> Double -> Double
 
 public export %extern
 clampF : Double -> Double -> Double -> Double
@@ -87,4 +87,4 @@ public export %extern
 mixF : Double -> Double -> Double -> Double
 
 public export %extern
-smoothstep_f : Double -> Double -> Double -> Double
+smoothstepF : Double -> Double -> Double -> Double
