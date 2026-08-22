@@ -30,6 +30,7 @@ test:
 backend-test: backend
 	python3 tools/check_backend.py
 	python3 tools/check_shared_factor_portrait.py
+	python3 tools/check_analytic_continuation.py
 
 check: generate test backend-test
 	python3 tools/check_glsl.py generated/fullscreen.vert generated/sphere.frag \
