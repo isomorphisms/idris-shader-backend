@@ -81,13 +81,29 @@ record SomeVector where
   vector : Operand (TVec width)
 
 public export
-data FloatUnary = FNeg | FAbs | FSqrt | FSin | FCos
+data FloatUnary =
+    FNeg
+  | FAbs
+  | FSqrt
+  | FSin
+  | FCos
+  | FFloor
+  | FFract
+  | FLog
 
 public export
-data FloatBinary = FAdd | FSub | FMul | FDiv | FMin | FMax
+data FloatBinary =
+    FAdd
+  | FSub
+  | FMul
+  | FDiv
+  | FMin
+  | FMax
+  | FAtan2
+  | FPow
 
 public export
-data FloatTernary = FClamp | FMix
+data FloatTernary = FClamp | FMix | FSmoothstep
 
 public export
 data Comparison = FLt | FLe | FEq | FGe | FGt
