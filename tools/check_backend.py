@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import difflib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -49,12 +50,27 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def validate_fragment(path: Path) -> None:
+    validator = shutil.which("glslangValidator")
+    if validator is None:
+        return
+    result = subprocess.run(
+        [validator, "-S", "frag", str(path)],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    require(result.returncode == 0, "GLSL validator rejected " + str(path) + ":\n" + result.stdout)
+
+
 def main() -> int:
     require(BACKEND.is_file(), "backend executable is missing; run make backend")
-    golden = ROOT / "generated" / "compiler-sphere.frag"
-    golden_ir = ROOT / "generated" / "compiler-sphere.ir"
-    reveal_golden = ROOT / "generated" / "disc-reveal.frag"
-    reveal_golden_ir = ROOT / "generated" / "disc-reveal.ir"
+    expected_shader = ROOT / "generated" / "compiler-sphere.frag"
+    expected_ir_path = ROOT / "generated" / "compiler-sphere.ir"
+    reveal_expected_shader = ROOT / "generated" / "disc-reveal.frag"
+    reveal_expected_ir_path = ROOT / "generated" / "disc-reveal.ir"
 
     with tempfile.TemporaryDirectory(prefix="idris-glsles-") as directory:
         temporary = Path(directory)
@@ -69,10 +85,10 @@ def main() -> int:
         actual_path = temporary / "compiler-sphere.frag"
         require(actual_path.is_file(), "backend did not write compiler-sphere.frag")
         actual = actual_path.read_text()
-        expected = golden.read_text()
+        expected = expected_shader.read_text()
         require(ir_dump.is_file(), "dump-ir directive did not write the typed IR")
         dumped = ir_dump.read_text()
-        expected_ir = golden_ir.read_text()
+        expected_ir = expected_ir_path.read_text()
         require(
             dumped.startswith("fragment(v_uv : in vec2, u_time : uniform float) -> vec4"),
             "typed IR dump lost interface types",
@@ -91,7 +107,7 @@ def main() -> int:
                 difflib.unified_diff(
                     expected.splitlines(True),
                     actual.splitlines(True),
-                    fromfile=str(golden),
+                    fromfile=str(expected_shader),
                     tofile=str(actual_path),
                 )
             )
@@ -109,9 +125,9 @@ def main() -> int:
         require(reveal_path.is_file(), "backend did not write disc-reveal.frag")
         require(reveal_ir_dump.is_file(), "backend did not dump disc-reveal.ir")
         reveal_source = reveal_path.read_text()
-        expected_reveal = reveal_golden.read_text()
+        expected_reveal = reveal_expected_shader.read_text()
         reveal_ir = reveal_ir_dump.read_text()
-        expected_reveal_ir = reveal_golden_ir.read_text()
+        expected_reveal_ir = reveal_expected_ir_path.read_text()
         required_interface = [
             "in vec2 v_ndc;",
             "uniform vec2 u_center;",
@@ -142,6 +158,26 @@ def main() -> int:
         phase_source = phase_path.read_text()
         for operation in ["floor(", "fract(", "log(", "atan(", "pow(", "smoothstep("]:
             require(operation in phase_source, "phase portrait shader lost " + operation)
+
+        arrays = compile_source(
+            "src/Example/FixedUniformArrays.idr",
+            temporary,
+            "fixed-uniform-arrays",
+        )
+        require(arrays.returncode == 0, "fixed uniform array shader failed:\n" + arrays.stdout)
+        arrays_path = temporary / "fixed-uniform-arrays.frag"
+        require(arrays_path.is_file(), "backend did not write fixed-uniform-arrays.frag")
+        arrays_source = arrays_path.read_text()
+        for declaration in [
+            "uniform int u_count;",
+            "uniform vec2 u_points[4];",
+            "uniform float u_weights[4];",
+        ]:
+            require(declaration in arrays_source, "fixed array interface lost " + declaration)
+        require("float(u_count)" in arrays_source, "integer uniform was not converted for arithmetic")
+        require("u_points[int(" in arrays_source, "vector uniform array was not indexed")
+        require("u_weights[int(" in arrays_source, "scalar uniform array was not indexed")
+        validate_fragment(arrays_path)
 
         failures = [
             (
@@ -185,7 +221,7 @@ def main() -> int:
 
     print(
         "backend checks passed: source lowering, expected outputs, phase portrait math, "
-        "four rejections, dimension proof"
+        "fixed uniform arrays, four rejections, dimension proof"
     )
     return 0
 
