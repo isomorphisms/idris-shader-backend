@@ -261,10 +261,16 @@ lowerExtPrim env primitive arguments = do
     "sqrtF" => floatUnary "sqrtF" FSqrt values
     "sinF" => floatUnary "sinF" FSin values
     "cosF" => floatUnary "cosF" FCos values
+    "floorF" => floatUnary "floorF" FFloor values
+    "fractF" => floatUnary "fractF" FFract values
+    "logF" => floatUnary "logF" FLog values
     "minF" => floatBinary "minF" FMin values
     "maxF" => floatBinary "maxF" FMax values
+    "atan2F" => floatBinary "atan2F" FAtan2 values
+    "powF" => floatBinary "powF" FPow values
     "clampF" => floatTernary "clampF" FClamp values
     "mixF" => floatTernary "mixF" FMix values
+    "smoothstepF" => floatTernary "smoothstepF" FSmoothstep values
     other => failLower ("unsupported external primitive in shader: " ++ show primitive)
 
 findDef : Name -> ShaderDefs -> Maybe ANFDef

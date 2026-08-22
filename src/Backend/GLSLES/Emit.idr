@@ -44,6 +44,9 @@ floatUnaryText FAbs value = "abs(" ++ value ++ ")"
 floatUnaryText FSqrt value = "sqrt(" ++ value ++ ")"
 floatUnaryText FSin value = "sin(" ++ value ++ ")"
 floatUnaryText FCos value = "cos(" ++ value ++ ")"
+floatUnaryText FFloor value = "floor(" ++ value ++ ")"
+floatUnaryText FFract value = "fract(" ++ value ++ ")"
+floatUnaryText FLog value = "log(" ++ value ++ ")"
 
 floatBinaryText : FloatBinary -> String -> String -> String
 floatBinaryText FAdd left right = "(" ++ left ++ " + " ++ right ++ ")"
@@ -52,12 +55,16 @@ floatBinaryText FMul left right = "(" ++ left ++ " * " ++ right ++ ")"
 floatBinaryText FDiv left right = "(" ++ left ++ " / " ++ right ++ ")"
 floatBinaryText FMin left right = "min(" ++ left ++ ", " ++ right ++ ")"
 floatBinaryText FMax left right = "max(" ++ left ++ ", " ++ right ++ ")"
+floatBinaryText FAtan2 y x = "atan(" ++ y ++ ", " ++ x ++ ")"
+floatBinaryText FPow base exponent = "pow(" ++ base ++ ", " ++ exponent ++ ")"
 
 floatTernaryText : FloatTernary -> String -> String -> String -> String
 floatTernaryText FClamp value low high =
   "clamp(" ++ value ++ ", " ++ low ++ ", " ++ high ++ ")"
 floatTernaryText FMix left right weight =
   "mix(" ++ left ++ ", " ++ right ++ ", " ++ weight ++ ")"
+floatTernaryText FSmoothstep low high value =
+  "smoothstep(" ++ low ++ ", " ++ high ++ ", " ++ value ++ ")"
 
 comparisonText : Comparison -> String -> String -> String
 comparisonText FLt left right = "(" ++ left ++ " < " ++ right ++ ")"

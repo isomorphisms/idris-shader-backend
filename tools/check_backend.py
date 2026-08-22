@@ -78,7 +78,7 @@ def main() -> int:
             "typed IR dump lost interface types",
         )
         require("_idris_t" in dumped and "return " in dumped, "typed IR dump is incomplete")
-        require(dumped == expected_ir, "typed IR dump differs from golden")
+        require(dumped == expected_ir, "typed IR dump differs from expected output")
         require(actual.count("sin(u_time)") == 1, "ANF CSE did not merge repeated sin(u_time)")
         require(" ? " in actual, "Idris conditional was not lowered to GLSL")
         require("dot(" in actual, "dimension-polymorphic dot product was not lowered")
@@ -95,7 +95,7 @@ def main() -> int:
                     tofile=str(actual_path),
                 )
             )
-            raise AssertionError("compiler shader differs from golden:\n" + difference)
+            raise AssertionError("compiler shader differs from expected output:\n" + difference)
 
         reveal_ir_dump = temporary / "disc-reveal.ir"
         reveal = compile_source(
@@ -125,8 +125,23 @@ def main() -> int:
             require(declaration in reveal_source, "disc reveal interface lost " + declaration)
         require("sin(" in reveal_source, "dark-gray reveal texture was not emitted")
         require(" ? 0.0 : " in reveal_source, "negative-radius no-mask sentinel was not emitted")
-        require(reveal_source == expected_reveal, "disc reveal shader differs from golden")
-        require(reveal_ir == expected_reveal_ir, "disc reveal IR differs from golden")
+        require(reveal_source == expected_reveal, "disc reveal shader differs from expected output")
+        require(reveal_ir == expected_reveal_ir, "disc reveal IR differs from expected output")
+
+        phase_math = compile_source(
+            "src/Example/PhasePortraitMath.idr",
+            temporary,
+            "phase-portrait-math",
+        )
+        require(
+            phase_math.returncode == 0,
+            "shared phase portrait math failed:\n" + phase_math.stdout,
+        )
+        phase_path = temporary / "phase-portrait-math.frag"
+        require(phase_path.is_file(), "backend did not write phase-portrait-math.frag")
+        phase_source = phase_path.read_text()
+        for operation in ["floor(", "fract(", "log(", "atan(", "pow(", "smoothstep("]:
+            require(operation in phase_source, "phase portrait shader lost " + operation)
 
         failures = [
             (
@@ -168,7 +183,10 @@ def main() -> int:
             "dimension mismatch did not report both widths:\n" + dimensions.stdout,
         )
 
-    print("backend checks passed: source lowering, two goldens, four rejections, dimension proof")
+    print(
+        "backend checks passed: source lowering, expected outputs, phase portrait math, "
+        "four rejections, dimension proof"
+    )
     return 0
 
 
