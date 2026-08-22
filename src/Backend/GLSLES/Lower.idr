@@ -82,6 +82,9 @@ expectFloat = expect TFloat
 expectBool : SomeOperand -> Either String (Operand TBool)
 expectBool = expect TBool
 
+expectInt : SomeOperand -> Either String (Operand TInt)
+expectInt = expect TInt
+
 record VectorPair where
   constructor PackVectorPair
   pairWidth : Nat
@@ -148,6 +151,20 @@ comparison operation constructor values = do
   right' <- liftEither (expectFloat right)
   result <- emit (RComparison constructor left' right')
   pure (PackOperand TBool result)
+
+intToFloat : List SomeOperand -> Lower SomeOperand
+intToFloat values = do
+  value <- liftEither (one "int_to_double" values >>= expectInt)
+  result <- emit (RIntToFloat value)
+  pure (PackOperand TFloat result)
+
+arrayIndex : List SomeOperand -> Lower SomeOperand
+arrayIndex values = do
+  (arrayValue, indexValue) <- liftEither (two "array_at" values)
+  PackArray _ elementTy array <- liftEither (expectArray arrayValue)
+  index <- liftEither (expectFloat indexValue)
+  result <- emit (RArrayIndex array index)
+  pure (PackOperand (arrayElementValueTy elementTy) result)
 
 lowerPrim : Env -> PrimFn arity -> List AVar -> Lower SomeOperand
 lowerPrim env primitive arguments = do
@@ -244,6 +261,8 @@ lowerExtPrim : Env -> Name -> List AVar -> Lower SomeOperand
 lowerExtPrim env primitive arguments = do
   values <- liftEither (resolveRuntimeArgs env arguments)
   case nameRoot primitive of
+    "array_at" => arrayIndex values
+    "int_to_double" => intToFloat values
     "vec2" => vectorConstructor2 values
     "vec3" => vectorConstructor3 values
     "vec4" => vectorConstructor4 values
