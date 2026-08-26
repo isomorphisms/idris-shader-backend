@@ -1,6 +1,7 @@
 module Backend.GLSLES.Codegen
 
 import Backend.GLSLES.Emit
+import Backend.GLSLES.FloatSemantics
 import Backend.GLSLES.Interface
 import Backend.GLSLES.IR
 import Backend.GLSLES.Lower
@@ -51,6 +52,12 @@ directiveValue needle (value :: rest) =
      then Just (pack (drop (length (unpack needle)) (unpack value)))
      else directiveValue needle rest
 
+selectedFloatWidth : List String -> Either String FloatWidth
+selectedFloatWidth requestedDirectives = case directiveValue "float-width=" requestedDirectives of
+  Nothing => Right defaultFloatWidth
+  Just "" => Left "float-width directive requires f16 or f32"
+  Just requested => parseFloatWidth requested
+
 public export
 compileGLSLES :
   Ref Ctxt Defs ->
@@ -72,13 +79,14 @@ compileGLSLES defs syn tmpDir outputDir term outfile = do
     | Nothing => backendError ("could not find ANF for exported entry " ++ show entryName)
   program <- fromEither (lowerFragment spec entryName (anf cdata) definition)
   session <- getSession
+  width <- fromEither (selectedFloatWidth (directives session))
   case directiveValue "dump-ir=" (directives session) of
     Nothing => pure ()
     Just "" => backendError "dump-ir directive requires a path"
     Just path => do
-      renderedIR <- fromEither (dumpFragmentIR program)
+      renderedIR <- fromEither (dumpFragmentIR width program)
       writeShader path renderedIR
-  source <- fromEither (emitFragment program)
+  source <- fromEither (emitFragment width program)
   let output = outputDir ++ "/" ++ outfile ++ ".frag"
   writeShader output source
   pure (Just output)
