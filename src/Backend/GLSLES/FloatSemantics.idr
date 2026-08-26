@@ -18,6 +18,12 @@ Show FloatWidth where
   show F16 = "F16"
   show F32 = "F32"
 
+public export
+parseFloatWidth : String -> Either String FloatWidth
+parseFloatWidth "f16" = Right F16
+parseFloatWidth "f32" = Right F32
+parseFloatWidth other = Left ("float-width must be f16 or f32; received " ++ other)
+
 ||| GLSL ES precision class used by the current lowering.
 ||| `Medium` is only a portable minimum-precision promise; a target profile
 ||| such as verified PowerVR may additionally establish native FP16 execution.
@@ -55,6 +61,14 @@ glslVectorType width 2 = Right (precisionKeyword width ++ " vec2")
 glslVectorType width 3 = Right (precisionKeyword width ++ " vec3")
 glslVectorType width 4 = Right (precisionKeyword width ++ " vec4")
 glslVectorType _ n = Left ("GLSL ES has no floating vector width " ++ show n)
+
+public export
+semanticScalarType : FloatWidth -> String
+semanticScalarType = show
+
+public export
+semanticVectorType : FloatWidth -> Nat -> String
+semanticVectorType width n = show width ++ "x" ++ show n
 
 public export
 defaultFloatWidth : FloatWidth
