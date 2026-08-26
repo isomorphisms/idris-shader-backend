@@ -1,5 +1,6 @@
 module Backend.GLSLES.Emit
 
+import Backend.GLSLES.FloatSemantics
 import Backend.GLSLES.IR
 import Data.Fin
 import Data.List
@@ -200,7 +201,8 @@ emitBindings (MkBinding ty name rhs :: rest) aliases cache reversedLines =
                                 ((key, name) :: cache) (line :: reversedLines)
 
 ||| Emit deterministic GLSL ES 3.00. Repeated pure ANF right-hand sides are
-||| coalesced while preserving the readable temporary-based form.
+||| coalesced while preserving the readable temporary-based form. The current
+||| production path is explicitly F32 and therefore selects highp float.
 public export
 emitFragment : FragmentProgram -> Either String String
 emitFragment program = do
@@ -209,7 +211,7 @@ emitFragment program = do
   let output = operandText aliases (result program)
       source =
         [ "#version 300 es"
-        , "precision highp float;"
+        , "precision " ++ precisionKeyword defaultFloatWidth ++ " float;"
         , "precision highp int;"
         , ""
         ] ++ declarations ++
