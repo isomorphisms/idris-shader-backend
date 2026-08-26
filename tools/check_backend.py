@@ -90,8 +90,13 @@ def main() -> int:
         dumped = ir_dump.read_text()
         expected_ir = expected_ir_path.read_text()
         require(
-            dumped.startswith("fragment(v_uv : in vec2, u_time : uniform float) -> vec4"),
-            "typed IR dump lost interface types",
+            dumped.startswith("fragment(v_uv : in F32x2, u_time : uniform F32) -> F32x4"),
+            "typed IR dump lost explicit F32 interface widths",
+        )
+        require(" : F32" in dumped and "F32x" in dumped, "typed IR dump lost F32 semantics")
+        require(
+            " : float" not in dumped and " : vec" not in dumped,
+            "typed IR dump regressed to width-erasing GLSL type names",
         )
         require("_idris_t" in dumped and "return " in dumped, "typed IR dump is incomplete")
         require(dumped == expected_ir, "typed IR dump differs from expected output")
