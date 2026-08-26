@@ -1,5 +1,6 @@
 module Test.Main
 
+import Backend.GLSLES.FloatSemantics
 import Data.List.Elem
 import Data.String
 import Data.Vect
@@ -46,12 +47,30 @@ showResult : TestResult -> IO ()
 showResult result =
   putStrLn ((if passed result then "PASS  " else "FAIL  ") ++ label result)
 
+floatSemanticsTests : List TestResult
+floatSemanticsTests =
+  [ MkTestResult "F32 selects explicit highp scalar semantics"
+      (glslScalarType F32 == "highp float")
+  , MkTestResult "F16 selects mediump scalar lowering"
+      (glslScalarType F16 == "mediump float")
+  , MkTestResult "F32 vector lowering preserves width"
+      (glslVectorType F32 4 == Right "highp vec4")
+  , MkTestResult "F16 vector lowering preserves width"
+      (glslVectorType F16 4 == Right "mediump vec4")
+  , MkTestResult "generic GLES does not claim exact F16"
+      (not (mediumpNativeF16 genericGLES) && not portableExactF16)
+  , MkTestResult "PowerVR profile records native mediump F16 and vectors"
+      (mediumpNativeF16 powerVR && vectorF16 powerVR)
+  ]
+
 shaderTests : String -> List TestResult
 shaderTests source =
   [ MkTestResult "GLSL ES version directive" (Data.String.isPrefixOf "#version 300 es" source)
   , MkTestResult "typed fragment input declaration" (Data.String.isInfixOf "in vec2 v_uv;" source)
   , MkTestResult "typed uniform declaration" (Data.String.isInfixOf "uniform float u_time;" source)
   , MkTestResult "scalar temporary lowering" (Data.String.isInfixOf "float _idris_t0" source)
+  , MkTestResult "production float declaration is explicit F32/highp"
+      (Data.String.isInfixOf "precision highp float;" source)
   , MkTestResult "integer powers are expanded" (not (Data.String.isInfixOf "pow(" source))
   , MkTestResult "fragment result is assigned" (Data.String.isInfixOf "_idris_fragColor =" source)
   ]
@@ -121,7 +140,7 @@ main = case sphereFragment of
           , MkTestResult "dark mask stays within its gray range"
               (approximately 0.035 (disc_reveal_gray (-1.0)) &&
                approximately 0.055 (disc_reveal_gray 1.0))
-          ] ++ shaderTests generated ++ [golden]
+          ] ++ floatSemanticsTests ++ shaderTests generated ++ [golden]
     traverse_ showResult tests
     if all passed tests
        then putStrLn (show (length tests) ++ " tests passed")
