@@ -30,6 +30,22 @@ glslType (TArray n elementTy) = do
   rendered <- arrayElementType elementTy
   Right (rendered ++ "[" ++ show n ++ "]")
 
+arrayElementSemanticType : ArrayElementTy -> String
+arrayElementSemanticType AFloat = "F32"
+arrayElementSemanticType ABool = "Bool"
+arrayElementSemanticType AInt = "Int"
+arrayElementSemanticType (AVec n) = "F32x" ++ show n
+
+||| Semantic type spelling used in the checked IR dump. This deliberately does
+||| not reuse GLSL's width-erasing `float` / `vecN` spelling.
+semanticType : ValueTy -> String
+semanticType TFloat = "F32"
+semanticType TBool = "Bool"
+semanticType TInt = "Int"
+semanticType (TVec n) = "F32x" ++ show n
+semanticType (TArray n elementTy) =
+  arrayElementSemanticType elementTy ++ "[" ++ show n ++ "]"
+
 floatLiteral : Double -> String
 floatLiteral value =
   let rendered = show value
@@ -155,25 +171,24 @@ declaration (MkInterfaceVar name Uniform ty) = do
   Right ("uniform " ++ rendered ++ " " ++ name ++ ";")
 
 dumpInterface : InterfaceVar -> Either String String
-dumpInterface (MkInterfaceVar name storage ty) = do
-  rendered <- glslType ty
+dumpInterface (MkInterfaceVar name storage ty) =
   let storageText = case storage of
                          FragmentInput => "in"
                          Uniform => "uniform"
-  Right (name ++ " : " ++ storageText ++ " " ++ rendered)
+   in Right (name ++ " : " ++ storageText ++ " " ++ semanticType ty)
 
 dumpBinding : Binding -> Either String String
-dumpBinding (MkBinding ty name rhs) = do
-  rendered <- glslType ty
-  Right (name ++ " : " ++ rendered ++ " = " ++ rhsText [] rhs)
+dumpBinding (MkBinding ty name rhs) =
+  Right (name ++ " : " ++ semanticType ty ++ " = " ++ rhsText [] rhs)
 
 ||| A stable, human-readable dump of the typed IR immediately before GLSL CSE.
+||| Floating-point widths are semantic names (F32/F32xN), not GLSL `float`.
 public export
 dumpFragmentIR : FragmentProgram -> Either String String
 dumpFragmentIR program = do
   arguments <- traverse dumpInterface (entryInterface (spec program))
   body <- traverse dumpBinding (bindings program)
-  let header = "fragment(" ++ concat (intersperse ", " arguments) ++ ") -> vec4"
+  let header = "fragment(" ++ concat (intersperse ", " arguments) ++ ") -> F32x4"
       output = "return " ++ operandText [] (result program)
   Right (unlines (header :: body ++ [output, ""]))
 
