@@ -1,0 +1,432 @@
+VULKAN GLSL SOURCE-LANGUAGE SURFACE
+Baseline source language: GLSL 4.60 constrained by the Vulkan GLSL/SPIR-V environment.
+Portable binary boundary: SPIR-V 1.6.
+The Vulkan environment, enabled device features, and glslang validator are the acceptance authority; desktop-GL built-ins that have no Vulkan meaning are not silently assumed.
+
+SHADER STAGES IN BASELINE
+vertex
+tessellation control
+tessellation evaluation
+geometry
+fragment
+compute
+
+SCALAR TYPES
+void
+bool
+int
+uint
+float
+double
+
+VECTOR TYPES
+bvec2
+bvec3
+bvec4
+ivec2
+ivec3
+ivec4
+uvec2
+uvec3
+uvec4
+vec2
+vec3
+vec4
+dvec2
+dvec3
+dvec4
+
+MATRIX TYPES
+mat2
+mat3
+mat4
+mat2x2
+mat2x3
+mat2x4
+mat3x2
+mat3x3
+mat3x4
+mat4x2
+mat4x3
+mat4x4
+dmat2
+dmat3
+dmat4
+dmat2x2
+dmat2x3
+dmat2x4
+dmat3x2
+dmat3x3
+dmat3x4
+dmat4x2
+dmat4x3
+dmat4x4
+
+CONTROL / DECLARATION WORDS
+const
+in
+out
+inout
+uniform
+buffer
+shared
+centroid
+sample
+patch
+flat
+smooth
+noperspective
+layout
+invariant
+precise
+highp
+mediump
+lowp
+precision
+struct
+if
+else
+switch
+case
+default
+while
+do
+for
+continue
+break
+return
+discard
+
+OPERATORS
+()
+[]
+.
+++
+--
++
+-
+!
+~
+*
+/
+%
+<<
+>>
+<
+>
+<=
+>=
+==
+!=
+&
+^
+|
+&&
+^^
+||
+?:
+=
++=
+-=
+*=
+/=
+%=
+<<=
+>>=
+&=
+^=
+|=
+,
+
+ANGLE / TRIGONOMETRIC BUILT-INS
+radians
+degrees
+sin
+cos
+tan
+asin
+acos
+atan
+sinh
+cosh
+tanh
+asinh
+acosh
+atanh
+
+EXPONENTIAL BUILT-INS
+pow
+exp
+log
+exp2
+log2
+sqrt
+inversesqrt
+
+COMMON BUILT-INS
+abs
+sign
+floor
+trunc
+round
+roundEven
+ceil
+fract
+mod
+modf
+min
+max
+clamp
+mix
+step
+smoothstep
+isnan
+isinf
+floatBitsToInt
+floatBitsToUint
+intBitsToFloat
+uintBitsToFloat
+fma
+frexp
+ldexp
+
+PACK / UNPACK BUILT-INS
+packUnorm2x16
+packSnorm2x16
+packUnorm4x8
+packSnorm4x8
+unpackUnorm2x16
+unpackSnorm2x16
+unpackUnorm4x8
+unpackSnorm4x8
+packDouble2x32
+unpackDouble2x32
+packHalf2x16
+unpackHalf2x16
+
+GEOMETRIC BUILT-INS
+length
+distance
+dot
+cross
+normalize
+faceforward
+reflect
+refract
+
+MATRIX BUILT-INS
+matrixCompMult
+outerProduct
+transpose
+determinant
+inverse
+
+VECTOR RELATIONAL BUILT-INS
+lessThan
+lessThanEqual
+greaterThan
+greaterThanEqual
+equal
+notEqual
+any
+all
+not
+
+INTEGER BUILT-INS
+uaddCarry
+usubBorrow
+umulExtended
+imulExtended
+bitfieldExtract
+bitfieldInsert
+bitfieldReverse
+bitCount
+findLSB
+findMSB
+
+TEXTURE QUERY BUILT-INS
+textureSize
+textureQueryLod
+textureQueryLevels
+textureSamples
+
+TEXTURE LOOKUP BUILT-INS
+texture
+textureProj
+textureLod
+textureOffset
+texelFetch
+texelFetchOffset
+textureProjOffset
+textureLodOffset
+textureProjLod
+textureProjLodOffset
+textureGrad
+textureGradOffset
+textureProjGrad
+textureProjGradOffset
+textureGather
+textureGatherOffset
+textureGatherOffsets
+
+GENERIC ATOMIC MEMORY BUILT-INS
+atomicAdd
+atomicMin
+atomicMax
+atomicAnd
+atomicOr
+atomicXor
+atomicExchange
+atomicCompSwap
+
+IMAGE BUILT-INS
+imageSize
+imageSamples
+imageLoad
+imageStore
+imageAtomicAdd
+imageAtomicMin
+imageAtomicMax
+imageAtomicAnd
+imageAtomicOr
+imageAtomicXor
+imageAtomicExchange
+imageAtomicCompSwap
+
+GEOMETRY BUILT-INS
+EmitVertex
+EndPrimitive
+EmitStreamVertex
+EndStreamPrimitive
+
+FRAGMENT DERIVATIVES
+dFdx
+dFdy
+fwidth
+dFdxFine
+dFdyFine
+fwidthFine
+dFdxCoarse
+dFdyCoarse
+fwidthCoarse
+
+FRAGMENT INTERPOLATION
+interpolateAtCentroid
+interpolateAtSample
+interpolateAtOffset
+
+SYNCHRONIZATION / MEMORY
+barrier
+memoryBarrier
+memoryBarrierBuffer
+memoryBarrierShared
+memoryBarrierImage
+groupMemoryBarrier
+
+INVOCATION VOTE
+anyInvocation
+allInvocations
+allInvocationsEqual
+
+VULKAN RESOURCE TYPE FAMILIES
+sampler types
+texture/sampler combined types accepted by Vulkan GLSL
+image types
+subpassInput
+subpassInputMS
+isubpassInput
+isubpassInputMS
+usubpassInput
+usubpassInputMS
+uniform blocks
+storage-buffer blocks
+push-constant blocks
+specialization constants
+
+VULKAN-RELEVANT LAYOUT QUALIFIERS / FORMS
+layout(set = N, binding = M)
+layout(push_constant)
+layout(constant_id = N)
+layout(location = N)
+layout(component = N)
+layout(index = N)
+layout(input_attachment_index = N)
+layout(offset = N)
+layout(std140)
+layout(std430)
+layout(row_major)
+layout(column_major)
+layout(local_size_x = N)
+layout(local_size_y = N)
+layout(local_size_z = N)
+layout(local_size_x_id = N)
+layout(local_size_y_id = N)
+layout(local_size_z_id = N)
+layout(vertices = N)
+layout(invocations = N)
+layout(points)
+layout(lines)
+layout(lines_adjacency)
+layout(triangles)
+layout(triangles_adjacency)
+layout(line_strip)
+layout(triangle_strip)
+layout(equal_spacing)
+layout(fractional_even_spacing)
+layout(fractional_odd_spacing)
+layout(cw)
+layout(ccw)
+layout(point_mode)
+layout(origin_upper_left)
+layout(early_fragment_tests)
+layout(depth_any)
+layout(depth_greater)
+layout(depth_less)
+layout(depth_unchanged)
+
+VULKAN GLSL BUILT-IN VARIABLE FAMILIES
+gl_Position
+gl_PointSize
+gl_ClipDistance
+gl_CullDistance
+gl_VertexIndex
+gl_InstanceIndex
+gl_PrimitiveID
+gl_InvocationID
+gl_Layer
+gl_ViewportIndex
+gl_TessLevelOuter
+gl_TessLevelInner
+gl_TessCoord
+gl_PatchVerticesIn
+gl_FragCoord
+gl_FrontFacing
+gl_PointCoord
+gl_SampleID
+gl_SamplePosition
+gl_SampleMaskIn
+gl_SampleMask
+gl_FragDepth
+gl_HelperInvocation
+gl_NumWorkGroups
+gl_WorkGroupSize
+gl_WorkGroupID
+gl_LocalInvocationID
+gl_GlobalInvocationID
+gl_LocalInvocationIndex
+
+VULKAN ENVIRONMENT RULES TO KEEP EXPLICIT
+all shader resources use Vulkan-compatible explicit interface/binding rules
+non-opaque host data is represented through uniform/storage/push-constant interfaces rather than desktop-GL default uniforms
+shader inputs/outputs use explicit locations/built-ins as required by the Vulkan environment
+specialization constants map to SPIR-V specialization constants
+host resource layouts and GLSL block layouts must agree byte-for-byte
+features such as 64-bit arithmetic, subgroup operations, storage image formats and optional stages remain device/capability gated
+legacy fixed-function / compatibility-profile GLSL is not part of this baseline
+Vulkan WSI is not a shader-language feature
+ray tracing, mesh/task shading and vendor extensions are not part of the baseline branch
+
+COMPILATION ORACLE
+glslangValidator/glslc with an explicitly pinned Vulkan target environment
+SPIR-V validation under the corresponding Vulkan environment
+SURFACE.txt SPIR-V inventory is the durable post-GLSL operation inventory
