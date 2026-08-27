@@ -1,7 +1,9 @@
 IDRIS2 ?= idris2
 IDRIS2_GLSLES ?= ./build/exec/idris2-glsles
+CC ?= cc
 
-.PHONY: build backend generate generate-compiler test backend-test check clean
+.PHONY: build backend generate generate-compiler test backend-test check clean \
+	powervr-hello powervr-hello-frag powervr-hello-host
 
 build:
 	$(IDRIS2) --build idris-glsl-es.ipkg
@@ -23,6 +25,18 @@ generate-compiler: backend
 		--source-dir src --output-dir generated \
 		src/Example/DiscReveal.idr -o disc-reveal
 
+powervr-hello-frag: backend
+	$(IDRIS2_GLSLES) --cg glsles \
+		--source-dir src --output-dir generated \
+		src/Example/PowerVRHelloX.idr -o powervr-hello-x
+
+powervr-hello-host:
+	mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra tools/powervr_hello_x.c \
+		-o build/powervr-hello-x -lEGL -lGLESv3
+
+powervr-hello: powervr-hello-frag powervr-hello-host
+
 test:
 	$(IDRIS2) --build tests.ipkg
 	./build/exec/idris-glsl-es-tests
@@ -32,6 +46,7 @@ backend-test: backend
 	python3 tools/check_shared_factor_portrait.py
 	python3 tools/check_analytic_continuation.py
 	python3 tools/check_surfer_root_search.py
+	python3 tools/check_powervr_hello.py
 
 check: generate test backend-test
 	python3 tools/check_glsl.py generated/fullscreen.vert generated/sphere.frag \
