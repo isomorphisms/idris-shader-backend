@@ -26,7 +26,7 @@ The CPU target remains AArch64 and belongs elsewhere. This branch owns shader se
 
 UAM can emit three inspectable levels: intermediary TGSI, final `.dksh`, and raw Maxwell bytecode. That gives us a much stronger compiler oracle than a generic driver-only GLSL path. We can compare the same shared shader IR against PowerVR GLSL ES and against the actual GM20x-oriented code produced for Switch.
 
-UAM explicitly targets the Tegra X1 in Switch, is based on Mesa's GLSL/TGSI infrastructure plus nouveau `nv50_ir`, and inherits the GM20x feature set with deko3d-specific changes. It supports vertex, tessellation-control, tessellation-evaluation, geometry, fragment, and compute stages.
+UAM explicitly targets the Tegra X1 in Switch, is based on Mesa's GLSL/TGSI infrastructure plus nouveau `nv50_ir`, and inherits the GM20x feature set with deko3d-specific changes. It supports vertex, tessellation-control, tessellation-evaluation, geometry, fragment, and compute stages. Its embedded frontend explicitly configures desktop core GLSL 4.60; accepted built-ins still depend on Mesa availability predicates and UAM patches, so the exact UAM source is the acceptance authority rather than a generic GLSL 4.60 feature table.
 
 ## Important UAM/deko3d differences from ordinary GL
 
@@ -48,19 +48,24 @@ NVIDIA does not provide this project with a normative, complete Maxwell SASS arc
 
 `DEKO3D-OPTIONS.txt` expands the public deko3d option/enumerant side, while `tools/extract_deko3d_surface.py` mechanically extracts all `dk*` public verbs, `Dk*` enumerants and `DK_*` public constants from a pinned `deko3d.h`. That extractor is the completeness oracle when the header evolves.
 
+`UAM-GLSL-SURFACE.txt` separately inventories the source-language operations and UAM compiler limits/policies. `tools/extract_uam_glsl_surface.py` reads UAM's embedded Mesa `builtin_functions.cpp`, `builtin_variables.cpp`, and `glsl_frontend.cpp` to emit the actual named source-level built-ins and configured GLSL version. This prevents “UAM-compatible GLSL” from becoming an undefined dialect label.
+
 The native-emitter list is an executable reverse-engineered compiler surface, not a claim that it exhausts every undocumented hardware encoding the chip might accept.
 
 ## Pinned references
 
 - UAM: https://github.com/devkitPro/uam
 - deko3d: https://github.com/devkitPro/deko3d
+- UAM GLSL frontend: https://github.com/devkitPro/uam/blob/master/source/glsl_frontend.cpp
 - UAM GM107 emitter: https://github.com/devkitPro/uam/blob/master/mesa-imported/codegen/nv50_ir_emit_gm107.cpp
 - Switch platform note: https://github.com/isomorphisms/idric-embedded/tree/switch
 
 ## Files
 
 - `SURFACE.txt` — flat UAM/deko3d/native-emitter operation surface.
+- `UAM-GLSL-SURFACE.txt` — GLSL source-language operations plus exact UAM compiler limits/policies.
 - `DEKO3D-OPTIONS.txt` — public deko3d options, enumerants, helper verbs and constants.
+- `tools/extract_uam_glsl_surface.py` — mechanical UAM/Mesa GLSL built-in/version checker.
 - `tools/extract_deko3d_surface.py` — mechanical completeness checker for the public deko3d header.
 - `families/uam-and-glsl.md` — source-language and compiler boundary.
 - `families/deko3d-api.md` — command/resource API families.
