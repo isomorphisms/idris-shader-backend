@@ -116,16 +116,6 @@ static GLint uniform_location(GLuint program, const char *name) {
   return location;
 }
 
-static GLint array_uniform_location(GLuint program, const char *name, const char *name0) {
-  GLint location = glGetUniformLocation(program, name);
-  if (location < 0) location = glGetUniformLocation(program, name0);
-  if (location < 0) {
-    fprintf(stderr, "missing array uniform %s\n", name);
-    exit(1);
-  }
-  return location;
-}
-
 static double seconds_now(void) {
   struct timespec value;
   if (clock_gettime(CLOCK_MONOTONIC, &value) != 0) fail("clock_gettime failed");
@@ -226,7 +216,7 @@ int main(void) {
   require_pixel(pixel, dot4_byte, dot4_byte, dot4_byte, 255, 2, "vec4 dot");
   printf("3 dot_vector4_covector4: PASS (%.7g)\n", dot4);
 
-  /* 4. A real 32-component contraction, stored as eight vec4 chunks. */
+  /* 4. A real 32-component contraction, stored as eight vec4 chunks each. */
   GLfloat vector32[32], covector32[32];
   float dot32 = 0.0f;
   for (int i = 0; i < 32; ++i) {
@@ -235,8 +225,14 @@ int main(void) {
     dot32 += vector32[i] * covector32[i];
   }
   glUseProgram(programs[3]);
-  glUniform4fv(array_uniform_location(programs[3], "u_vector", "u_vector[0]"), 8, vector32);
-  glUniform4fv(array_uniform_location(programs[3], "u_covector", "u_covector[0]"), 8, covector32);
+  for (int chunk = 0; chunk < 8; ++chunk) {
+    char vector_name[16];
+    char covector_name[16];
+    snprintf(vector_name, sizeof vector_name, "u_v%d", chunk);
+    snprintf(covector_name, sizeof covector_name, "u_c%d", chunk);
+    glUniform4fv(uniform_location(programs[3], vector_name), 1, &vector32[4 * chunk]);
+    glUniform4fv(uniform_location(programs[3], covector_name), 1, &covector32[4 * chunk]);
+  }
   draw(programs[3], 1, 1);
   glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
   int dot32_byte = (int)lroundf(255.0f * dot32);
