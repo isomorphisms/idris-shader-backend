@@ -43,10 +43,12 @@ UAM explicitly targets the Tegra X1 in Switch, is based on Mesa's GLSL/TGSI infr
 
 NVIDIA does not provide this project with a normative, complete Maxwell SASS architecture manual comparable to Arm's public ISA manuals. However, UAM carries the actual GM107/GM20x nouveau code emitter it uses. `SURFACE.txt` therefore records both:
 
-1. the complete public deko3d C API verbs and major option enums; and
-2. the complete native-emitter operation families present in UAM's `CodeEmitterGM107` implementation.
+1. the public deko3d C API verbs and principal option families; and
+2. the native-emitter operation families present in UAM's `CodeEmitterGM107` implementation.
 
-That second list is an executable reverse-engineered compiler surface, not a claim that it exhausts every undocumented hardware encoding the chip might accept.
+`DEKO3D-OPTIONS.txt` expands the public deko3d option/enumerant side, while `tools/extract_deko3d_surface.py` mechanically extracts all `dk*` public verbs, `Dk*` enumerants and `DK_*` public constants from a pinned `deko3d.h`. That extractor is the completeness oracle when the header evolves.
+
+The native-emitter list is an executable reverse-engineered compiler surface, not a claim that it exhausts every undocumented hardware encoding the chip might accept.
 
 ## Pinned references
 
@@ -57,7 +59,9 @@ That second list is an executable reverse-engineered compiler surface, not a cla
 
 ## Files
 
-- `SURFACE.txt` — flat UAM/deko3d/native-emitter surface.
+- `SURFACE.txt` — flat UAM/deko3d/native-emitter operation surface.
+- `DEKO3D-OPTIONS.txt` — public deko3d options, enumerants, helper verbs and constants.
+- `tools/extract_deko3d_surface.py` — mechanical completeness checker for the public deko3d header.
 - `families/uam-and-glsl.md` — source-language and compiler boundary.
 - `families/deko3d-api.md` — command/resource API families.
 - `families/maxwell-sm53.md` — GM20x execution/codegen families and compiler consequences.
