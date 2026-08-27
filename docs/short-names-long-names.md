@@ -71,7 +71,7 @@ It is there to keep these externals distinct and recognizable to the backend.
 | --- | --- | --- |
 | `GPU` | graphics processing unit | The processor executing the shader work. |
 | `USC` | Unified Shading Cluster | PowerVR shader-execution core terminology. |
-| `ISR` | instruction-set-reference assembly | The assembly notation used by Imagination's public PowerVR instruction-set reference. |
+| `ISR` | Imagination's `ISR assembly` notation | The public reference uses these initials but this file does not guess an expansion for them. |
 | `EGL` | EGL graphics interface | The API used by the native probe to create an OpenGL ES context/surface. |
 | `GLES` | OpenGL ES | The graphics API through which the phone driver receives the shaders and draw calls. |
 
