@@ -103,11 +103,12 @@ def main() -> int:
         require("dot(" in dot4, "vec4 dot was not emitted as GLSL dot")
 
         dot32 = shaders["dot-vector32-covector32"]
-        require("uniform vec4 u_vector[8];" in dot32, "32D dot lost eight vec4 vector chunks")
-        require("uniform vec4 u_covector[8];" in dot32, "32D dot lost eight vec4 covector chunks")
-        require(dot32.count("u_vector[int(") >= 8, "32D vector chunks were not fully indexed")
-        require(dot32.count("u_covector[int(") >= 8, "32D covector chunks were not fully indexed")
+        for index in range(8):
+            require(f"uniform vec4 u_v{index};" in dot32, f"32D dot lost vector chunk {index}")
+            require(f"uniform vec4 u_c{index};" in dot32, f"32D dot lost covector chunk {index}")
         require(dot32.count("dot(") >= 8, "32D contraction did not use eight native vec4 dots")
+        require("u_vector[" not in dot32 and "u_covector[" not in dot32,
+                "32D teaching probe unexpectedly regressed to the slow nested-array path")
 
         subtract8 = shaders["subtract-vector8-norm"]
         for declaration in [
