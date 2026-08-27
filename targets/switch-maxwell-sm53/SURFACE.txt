@@ -1,0 +1,682 @@
+ORIGINAL SWITCH / TEGRA X1 / GM20x / UAM / DEKO3D FLAT SURFACE
+Scope: public UAM compiler interface, public deko3d C API, and the operation families implemented by UAM's GM107/GM20x native emitter.
+
+UAM COMMAND-LINE VERBS / OPTIONS
+uam <options> file
+-o
+--out=<file>
+-r
+--raw=<file>
+-t
+--tgsi=<file>
+-s
+--stage=<name>
+-v
+--version
+
+UAM SHADER STAGES
+vert
+vertex
+tess_ctrl
+tessellation-control
+tess_eval
+tessellation-evaluation
+geom
+geometry
+frag
+fragment
+comp
+compute
+
+UAM BINDING LIMITS PER SHADER STAGE
+UBO 0..15
+SSBO 0..15
+combined image+sampler 0..31
+image 0..7
+compute-native UBO 0..5
+compute-emulated UBO 6..15
+
+UAM COMPILER OUTPUTS
+GLSL input
+TGSI intermediary
+DKSH shader module
+raw Maxwell bytecode
+
+DEKO3D DEVICE / TIME
+dkDeviceMakerDefaults
+dkDeviceCreate
+dkDeviceDestroy
+dkDeviceGetCurrentTimestamp
+dkDeviceGetCurrentTimestampInNs
+dkTimestampToNs
+dkNsToTimestamp
+
+DEKO3D MEMORY BLOCKS
+dkMemBlockMakerDefaults
+dkMemBlockCreate
+dkMemBlockDestroy
+dkMemBlockGetCpuAddr
+dkMemBlockGetGpuAddr
+dkMemBlockGetSize
+dkMemBlockFlushCpuCache
+
+DEKO3D FENCES / VARIABLES
+dkFenceWait
+dkFenceImport
+dkVariableInitialize
+dkVariableRead
+dkVariableSignal
+
+VARIABLE OPERATIONS
+Set
+Add
+Sub
+And
+Or
+Xor
+
+VARIABLE COMPARE OPERATIONS
+Equal
+Sequential
+
+PIPELINE POSITIONS
+Top
+Rasterizer
+Bottom
+
+DEKO3D COMMAND BUFFER LIFECYCLE
+dkCmdBufMakerDefaults
+dkCmdBufCreate
+dkCmdBufDestroy
+dkCmdBufAddMemory
+dkCmdBufFinishList
+dkCmdBufClear
+dkCmdBufBeginCaptureCmds
+dkCmdBufEndCaptureCmds
+dkCmdBufReplayCmds
+dkCmdBufCallList
+
+DEKO3D COMMAND BUFFER SYNCHRONIZATION
+dkCmdBufWaitFence
+dkCmdBufSignalFence
+dkCmdBufWaitVariable
+dkCmdBufSignalVariable
+dkCmdBufBarrier
+
+BARRIER MODES
+None
+Tiles
+Fragments
+Primitives
+Full
+
+INVALIDATION OPTIONS
+Image
+Shader
+Descriptors
+Zcull
+L2Cache
+
+DEKO3D SHADER / RESOURCE BINDING
+dkCmdBufBindShaders
+dkCmdBufBindUniformBuffers
+dkCmdBufBindUniformBuffer
+dkCmdBufBindStorageBuffers
+dkCmdBufBindStorageBuffer
+dkCmdBufBindTextures
+dkCmdBufBindTexture
+dkCmdBufBindImages
+dkCmdBufBindImage
+dkCmdBufBindImageDescriptorSet
+dkCmdBufBindSamplerDescriptorSet
+dkCmdBufBindRenderTargets
+dkCmdBufBindRenderTarget
+
+DEKO3D FIXED-FUNCTION STATE BINDING
+dkCmdBufBindRasterizerState
+dkCmdBufBindMultisampleState
+dkCmdBufBindColorState
+dkCmdBufBindColorWriteState
+dkCmdBufBindBlendStates
+dkCmdBufBindBlendState
+dkCmdBufBindDepthStencilState
+dkCmdBufBindVtxAttribState
+dkCmdBufBindVtxBufferState
+dkCmdBufBindVtxBuffers
+dkCmdBufBindVtxBuffer
+dkCmdBufBindIdxBuffer
+
+DEKO3D DYNAMIC STATE
+dkCmdBufSetViewports
+dkCmdBufSetViewportSwizzles
+dkCmdBufSetSubpixelPrecisionBias
+dkCmdBufSetScissors
+dkCmdBufSetDepthBias
+dkCmdBufSetPointSize
+dkCmdBufSetLineWidth
+dkCmdBufSetLineStipple
+dkCmdBufSetPolygonStipple
+dkCmdBufSetConservativeRasterEnable
+dkCmdBufSetConservativeRasterDilate
+dkCmdBufSetSampleMask
+dkCmdBufSetCoverageModulationTable
+dkCmdBufSetDepthBounds
+dkCmdBufSetAlphaRef
+dkCmdBufSetBlendConst
+dkCmdBufSetStencil
+dkCmdBufSetPrimitiveRestart
+dkCmdBufSetPatchSize
+dkCmdBufSetTessOuterLevels
+dkCmdBufSetTessInnerLevels
+dkCmdBufSetTileSize
+dkCmdBufTiledCacheOp
+
+DEKO3D CLEAR / DISCARD / RESOLVE
+dkCmdBufClearColor
+dkCmdBufClearColorFloat
+dkCmdBufClearColorSint
+dkCmdBufClearColorUint
+dkCmdBufClearDepthStencil
+dkCmdBufDiscardColor
+dkCmdBufDiscardDepthStencil
+dkCmdBufResolveDepthValues
+
+DEKO3D DRAW / DISPATCH
+dkCmdBufDraw
+dkCmdBufDrawIndirect
+dkCmdBufDrawIndexed
+dkCmdBufDrawIndexedIndirect
+dkCmdBufDispatchCompute
+dkCmdBufDispatchComputeIndirect
+
+PRIMITIVE TYPES
+Points
+Lines
+LineLoop
+LineStrip
+Triangles
+TriangleStrip
+TriangleFan
+Quads
+QuadStrip
+Polygon
+LinesAdjacency
+LineStripAdjacency
+TrianglesAdjacency
+TriangleStripAdjacency
+Patches
+
+INDEX FORMATS
+Uint8
+Uint16
+Uint32
+
+DEKO3D PUSH / COPY / BLIT
+dkCmdBufPushConstants
+dkCmdBufPushData
+dkCmdBufCopyBuffer
+dkCmdBufCopyImage
+dkCmdBufBlitImage
+dkCmdBufResolveImage
+dkCmdBufCopyBufferToImage
+dkCmdBufCopyImageToBuffer
+
+BLIT OPTIONS
+FlipX
+FlipY
+FlipZ
+FilterNearest
+FilterLinear
+ModeBlit
+ModeAlphaMask
+ModeAlphaBlend
+ModePremultBlit
+ModePremultBlend
+
+DEKO3D COUNTERS
+dkCmdBufReportCounter
+dkCmdBufReportValue
+dkCmdBufResetCounter
+TimestampPipelineTop
+Timestamp
+SamplesPassed
+ZcullStats
+InputVertices
+InputPrimitives
+VertexShaderInvocations
+TessControlShaderInvocations
+TessEvaluationShaderInvocations
+GeometryShaderInvocations
+FragmentShaderInvocations
+TessEvaluationShaderPrimitives
+GeometryShaderPrimitives
+ClipperInputPrimitives
+ClipperOutputPrimitives
+PrimitivesGenerated
+TransformFeedbackPrimitivesWritten
+
+DEKO3D QUEUE
+dkQueueMakerDefaults
+dkQueueCreate
+dkQueueDestroy
+dkQueueIsInErrorState
+dkQueueWaitFence
+dkQueueSignalFence
+dkQueueSubmitCommands
+dkQueueFlush
+dkQueueWaitIdle
+dkQueueAcquireImage
+dkQueuePresentImage
+
+QUEUE OPTIONS
+Graphics
+Compute
+MediumPrio
+HighPrio
+LowPrio
+EnableZcull
+DisableZcull
+
+DEKO3D SHADER OBJECT
+dkShaderMakerDefaults
+dkShaderInitialize
+dkShaderIsValid
+dkShaderGetStage
+
+DEKO3D SHADER STAGES
+Vertex
+TessCtrl
+TessEval
+Geometry
+Fragment
+Compute
+
+DEKO3D IMAGE / LAYOUT / DESCRIPTORS
+dkImageFormatGetFlags
+dkImageLayoutInitialize
+dkImageLayoutGetSize
+dkImageLayoutGetAlignment
+dkImageInitialize
+dkImageGetGpuAddr
+dkImageGetLayout
+dkImageDescriptorInitialize
+dkSamplerDescriptorInitialize
+dkMakeImageHandle
+dkMakeSamplerHandle
+dkMakeTextureHandle
+
+IMAGE TYPES
+None
+1D
+2D
+3D
+1DArray
+2DArray
+2DMS
+2DMSArray
+Rectangle
+Cubemap
+CubemapArray
+Buffer
+
+IMAGE FLAGS
+BlockLinear
+PitchLinear
+CustomTileSize
+HwCompression
+Z16EnableZbc
+UsageRender
+UsageLoadStore
+UsagePresent
+Usage2DEngine
+UsageVideo
+
+IMAGE FORMAT OPTIONS
+None
+R8_Unorm
+R8_Snorm
+R8_Uint
+R8_Sint
+R16_Float
+R16_Unorm
+R16_Snorm
+R16_Uint
+R16_Sint
+R32_Float
+R32_Uint
+R32_Sint
+RG8_Unorm
+RG8_Snorm
+RG8_Uint
+RG8_Sint
+RG16_Float
+RG16_Unorm
+RG16_Snorm
+RG16_Uint
+RG16_Sint
+RG32_Float
+RG32_Uint
+RG32_Sint
+RGB32_Float
+RGB32_Uint
+RGB32_Sint
+RGBA8_Unorm
+RGBA8_Snorm
+RGBA8_Uint
+RGBA8_Sint
+RGBA16_Float
+RGBA16_Unorm
+RGBA16_Snorm
+RGBA16_Uint
+RGBA16_Sint
+RGBA32_Float
+RGBA32_Uint
+RGBA32_Sint
+S8
+Z16
+Z24X8
+ZF32
+Z24S8
+ZF32_X24S8
+RGBX8_Unorm_sRGB
+RGBA8_Unorm_sRGB
+RGBA4_Unorm
+RGB5_Unorm
+RGB5A1_Unorm
+RGB565_Unorm
+RGB10A2_Unorm
+RGB10A2_Uint
+RG11B10_Float
+E5BGR9_Float
+RGB_BC1
+RGBA_BC1
+RGBA_BC2
+RGBA_BC3
+RGB_BC1_sRGB
+RGBA_BC1_sRGB
+RGBA_BC2_sRGB
+RGBA_BC3_sRGB
+R_BC4_Unorm
+R_BC4_Snorm
+RG_BC5_Unorm
+RG_BC5_Snorm
+RGBA_BC7_Unorm
+RGBA_BC7_Unorm_sRGB
+RGBA_BC6H_SF16_Float
+RGBA_BC6H_UF16_Float
+RGBX8_Unorm
+RGBX8_Snorm
+RGBX8_Uint
+RGBX8_Sint
+RGBX16_Float
+RGBX16_Unorm
+RGBX16_Snorm
+RGBX16_Uint
+RGBX16_Sint
+RGBX32_Float
+RGBX32_Uint
+RGBX32_Sint
+RGBA_ASTC_4x4
+RGBA_ASTC_5x4
+RGBA_ASTC_5x5
+RGBA_ASTC_6x5
+RGBA_ASTC_6x6
+RGBA_ASTC_8x5
+RGBA_ASTC_8x6
+RGBA_ASTC_8x8
+RGBA_ASTC_10x5
+RGBA_ASTC_10x6
+RGBA_ASTC_10x8
+RGBA_ASTC_10x10
+RGBA_ASTC_12x10
+RGBA_ASTC_12x12
+RGBA_ASTC_4x4_sRGB
+RGBA_ASTC_5x4_sRGB
+RGBA_ASTC_5x5_sRGB
+RGBA_ASTC_6x5_sRGB
+RGBA_ASTC_6x6_sRGB
+RGBA_ASTC_8x5_sRGB
+RGBA_ASTC_8x6_sRGB
+RGBA_ASTC_8x8_sRGB
+RGBA_ASTC_10x5_sRGB
+RGBA_ASTC_10x6_sRGB
+RGBA_ASTC_10x8_sRGB
+RGBA_ASTC_10x10_sRGB
+RGBA_ASTC_12x10_sRGB
+RGBA_ASTC_12x12_sRGB
+BGR565_Unorm
+BGR5_Unorm
+BGR5A1_Unorm
+A1BGR5_Unorm
+BGRX8_Unorm
+BGRA8_Unorm
+BGRX8_Unorm_sRGB
+BGRA8_Unorm_sRGB
+R_ETC2_Unorm
+R_ETC2_Snorm
+RG_ETC2_Unorm
+RG_ETC2_Snorm
+RGB_ETC2
+RGB_PTA_ETC2
+RGBA_ETC2
+RGB_ETC2_sRGB
+RGB_PTA_ETC2_sRGB
+RGBA_ETC2_sRGB
+
+DEKO3D RASTERIZER HELPERS / OPTIONS
+dkRasterizerStateDefaults
+Point
+Line
+Fill
+FaceNone
+FaceFront
+FaceBack
+FaceFrontAndBack
+CW
+CCW
+ProvokingVertexFirst
+ProvokingVertexLast
+
+DEKO3D MULTISAMPLE
+dkMultisampleStateDefaults
+dkMultisampleStateSetLocations
+CoverageNone
+CoverageRgb
+CoverageAlpha
+CoverageRgba
+
+DEKO3D COLOR / LOGIC
+dkColorStateDefaults
+dkColorStateSetBlendEnable
+dkColorWriteStateDefaults
+dkColorWriteStateSetMask
+LogicClear
+LogicAnd
+LogicAndReverse
+LogicCopy
+LogicAndInverted
+LogicNoOp
+LogicXor
+LogicOr
+LogicNor
+LogicEquivalent
+LogicInvert
+LogicOrReverse
+LogicCopyInverted
+LogicOrInverted
+LogicNand
+LogicSet
+ColorMaskR
+ColorMaskG
+ColorMaskB
+ColorMaskA
+ColorMaskRGB
+ColorMaskRGBA
+
+DEKO3D BLENDING
+dkBlendStateDefaults
+dkBlendStateSetOps
+dkBlendStateSetFactors
+BlendAdd
+BlendSub
+BlendRevSub
+BlendMin
+BlendMax
+FactorZero
+FactorOne
+FactorSrcColor
+FactorInvSrcColor
+FactorSrcAlpha
+FactorInvSrcAlpha
+FactorDstAlpha
+FactorInvDstAlpha
+FactorDstColor
+FactorInvDstColor
+FactorSrcAlphaSaturate
+FactorSrc1Color
+FactorInvSrc1Color
+FactorSrc1Alpha
+FactorInvSrc1Alpha
+FactorConstColor
+FactorInvConstColor
+FactorConstAlpha
+FactorInvConstAlpha
+
+DEKO3D DEPTH / STENCIL
+dkDepthStencilStateDefaults
+StencilKeep
+StencilZero
+StencilReplace
+StencilIncr
+StencilDecr
+StencilInvert
+StencilIncrWrap
+StencilDecrWrap
+
+DEKO3D TILED CACHE
+Disable
+Enable
+Flush
+FlushAlt
+UnkDisable
+UnkEnable
+
+DEKO3D SWAPCHAIN
+dkSwapchainMakerDefaults
+dkSwapchainCreate
+dkSwapchainDestroy
+dkSwapchainAcquireImage
+dkSwapchainSetCrop
+dkSwapchainSetSwapInterval
+
+UAM GM107 / GM20x NATIVE EMITTER OPERATION FAMILIES
+EXIT
+BRA
+CAL
+PCNT
+CONT
+PBK
+BRK
+PRET
+RET
+SSY
+SYNC
+SAM
+RAM
+MOV
+S2R
+CS2R
+F2F
+F2I
+I2F
+I2I
+SEL
+SHFL
+DADD
+DMUL
+DFMA
+DMNMX
+DSET
+DSETP
+FADD
+FMUL
+FFMA
+MUFU
+FMNMX
+RRO
+FCMP
+FSET
+FSETP
+FSWZADD
+LOP
+NOT
+IADD
+IMUL
+IMAD
+ISCADD
+XMAD
+IMNMX
+ICMP
+ISET
+ISETP
+SHL
+SHR
+SHF
+POPC
+BFI
+BFE
+FLO
+LDC
+LDL
+LDS
+LDG
+LD
+STL
+STS
+STG
+ST
+ALD
+AST
+ISBERD
+AL2P
+IPA
+ATOM
+ATOMS
+RED
+CCTL
+PIXLD
+TEX
+TEXS
+TLD
+TLD4
+TXD
+TXQ
+TMML
+DEPBAR
+NOP
+KIL
+OUT
+BAR
+MEMBAR
+VOTE
+surface-store family (SUST)
+surface-load family (SULD)
+surface-reduction family (SURED)
+
+NATIVE EMITTER REGISTER / MODIFIER FAMILIES
+GPR
+system register
+predicate register
+address
+constant buffer
+immediate
+condition code
+saturate
+rounding mode
+absolute-value source modifier
+negate source modifier
+predicate / inverse predicate
+carry / condition-code behavior
+
+SCOPE NOTE
+The native-emitter list above is exhaustive for the operation-emitter methods present in UAM's public GM107 code emitter. It is not a claim that every undocumented hardware encoding accepted by Tegra X1 has been publicly enumerated.
