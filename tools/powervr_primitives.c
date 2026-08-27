@@ -43,7 +43,7 @@ static char *read_text(const char *path) {
   return text;
 }
 
-static GLuint compile_shader(GLenum kind, const char *source) {
+static GLuint compile_shader(GLenum kind, const char *source, const char *label) {
   GLuint shader = glCreateShader(kind);
   glShaderSource(shader, 1, &source, NULL);
   glCompileShader(shader);
@@ -53,7 +53,7 @@ static GLuint compile_shader(GLenum kind, const char *source) {
     char log[4096];
     GLsizei used = 0;
     glGetShaderInfoLog(shader, sizeof log, &used, log);
-    fprintf(stderr, "shader compile failed:\n%.*s\n", (int)used, log);
+    fprintf(stderr, "%s: shader compile failed:\n%.*s\n", label, (int)used, log);
     exit(1);
   }
   return shader;
@@ -61,7 +61,7 @@ static GLuint compile_shader(GLenum kind, const char *source) {
 
 static GLuint link_fragment(GLuint vertex, const char *path) {
   char *source = read_text(path);
-  GLuint fragment = compile_shader(GL_FRAGMENT_SHADER, source);
+  GLuint fragment = compile_shader(GL_FRAGMENT_SHADER, source, path);
   free(source);
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex);
@@ -80,14 +80,17 @@ static GLuint link_fragment(GLuint vertex, const char *path) {
   return program;
 }
 
-static void draw(GLuint program, int width, int height) {
+static void draw(GLuint program, int width, int height, const char *label) {
   glViewport(0, 0, width, height);
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
   glUseProgram(program);
   glDrawArrays(GL_TRIANGLES, 0, 3);
   glFinish();
-  if (glGetError() != GL_NO_ERROR) fail("OpenGL ES draw failed");
+  if (glGetError() != GL_NO_ERROR) {
+    fprintf(stderr, "%s: OpenGL ES draw failed\n", label);
+    exit(1);
+  }
 }
 
 static int near_byte(unsigned char actual, int expected, int tolerance) {
@@ -122,7 +125,7 @@ static double seconds_now(void) {
   return (double)value.tv_sec + (double)value.tv_nsec * 1e-9;
 }
 
-static double benchmark_draw(GLuint program, int width, int height) {
+static double benchmark_draw(GLuint program, int width, int height, const char *label) {
   glViewport(0, 0, width, height);
   glUseProgram(program);
   glFinish();
@@ -130,6 +133,10 @@ static double benchmark_draw(GLuint program, int width, int height) {
   for (int i = 0; i < BENCH_DRAWS; ++i) glDrawArrays(GL_TRIANGLES, 0, 3);
   glFinish();
   double finish = seconds_now();
+  if (glGetError() != GL_NO_ERROR) {
+    fprintf(stderr, "%s: timing draw failed\n", label);
+    exit(1);
+  }
   return (finish - start) / (double)BENCH_DRAWS;
 }
 
@@ -180,12 +187,12 @@ int main(void) {
   printf("GL_VERSION: %s\n", (const char *)glGetString(GL_VERSION));
   printf("GLSL: %s\n\n", (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-  GLuint vertex = compile_shader(GL_VERTEX_SHADER, vertex_source);
+  GLuint vertex = compile_shader(GL_VERTEX_SHADER, vertex_source, "shared vertex shader");
   GLuint programs[6];
   for (int i = 0; i < 6; ++i) programs[i] = link_fragment(vertex, paths[i]);
 
   /* 1. Zero-based pixel 3 of a 4x1 framebuffer. */
-  draw(programs[0], 4, 1);
+  draw(programs[0], 4, 1, "1 set_pixel_3_to_rgb_52_39_182");
   unsigned char pixels4[4 * 4];
   glReadPixels(0, 0, 4, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixels4);
   for (int i = 0; i < 3; ++i)
@@ -194,7 +201,7 @@ int main(void) {
   puts("1 set_pixel_3_to_rgb_52_39_182: PASS");
 
   /* 2. A tile-sized 32x32 fill. */
-  draw(programs[1], 32, 32);
+  draw(programs[1], 32, 32, "2 set_block_32x32_to_rgb_52_39_182");
   unsigned char block[32 * 32 * 4];
   glReadPixels(0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, block);
   for (int i = 0; i < 32 * 32; ++i)
@@ -207,7 +214,7 @@ int main(void) {
   glUseProgram(programs[2]);
   glUniform4fv(uniform_location(programs[2], "u_vector"), 1, vector4);
   glUniform4fv(uniform_location(programs[2], "u_covector"), 1, covector4);
-  draw(programs[2], 1, 1);
+  draw(programs[2], 1, 1, "3 dot_vector4_covector4");
   unsigned char pixel[4];
   glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
   float dot4 = 0.0f;
@@ -233,7 +240,7 @@ int main(void) {
     glUniform4fv(uniform_location(programs[3], vector_name), 1, &vector32[4 * chunk]);
     glUniform4fv(uniform_location(programs[3], covector_name), 1, &covector32[4 * chunk]);
   }
-  draw(programs[3], 1, 1);
+  draw(programs[3], 1, 1, "4 dot_vector32_covector32");
   glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
   int dot32_byte = (int)lroundf(255.0f * dot32);
   require_pixel(pixel, dot32_byte, dot32_byte, dot32_byte, 255, 2, "32D dot");
@@ -250,7 +257,7 @@ int main(void) {
   glUniform4fv(uniform_location(programs[4], "u_a1"), 1, a1);
   glUniform4fv(uniform_location(programs[4], "u_b0"), 1, b0);
   glUniform4fv(uniform_location(programs[4], "u_b1"), 1, b1);
-  draw(programs[4], 1, 1);
+  draw(programs[4], 1, 1, "5 subtract_vector8_norm");
   glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
   float norm2 = 0.0f;
   for (int i = 0; i < 4; ++i) {
@@ -268,13 +275,13 @@ int main(void) {
   glUniform4fv(uniform_location(programs[5], "u_a1"), 1, a1);
   glUniform4fv(uniform_location(programs[5], "u_b0"), 1, b0);
   glUniform4fv(uniform_location(programs[5], "u_b1"), 1, b1);
-  draw(programs[5], 1, 1);
+  draw(programs[5], 1, 1, "6 rotate_difference8_to_e1");
   glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
   require_pixel(pixel, 255, 0, 0, 255, 3, "8D Givens rotation to e1");
   puts("6 rotate_difference8_to_e1: PASS");
 
-  double pixel_seconds = benchmark_draw(programs[0], 4, 1);
-  double block_seconds = benchmark_draw(programs[1], 32, 32);
+  double pixel_seconds = benchmark_draw(programs[0], 4, 1, "1 set_pixel_3_to_rgb_52_39_182");
+  double block_seconds = benchmark_draw(programs[1], 32, 32, "2 set_block_32x32_to_rgb_52_39_182");
   printf("\n4096-draw wall-time probe (includes driver/submission + GPU completion):\n");
   printf("  4x1 pixel-selection draw: %.3f us/draw\n", pixel_seconds * 1e6);
   printf("  32x32 block-fill draw:    %.3f us/draw\n", block_seconds * 1e6);
