@@ -1,0 +1,432 @@
+UAM GLSL SOURCE-LANGUAGE SURFACE
+Pinned compiler: devkitPro/uam embedded Mesa frontend.
+UAM source explicitly configures desktop core GLSLVersion = 460.
+Exact accepted overloads / extension-backed names are mechanically checked by tools/extract_uam_glsl_surface.py against UAM's builtin_functions.cpp, builtin_variables.cpp and glsl_frontend.cpp.
+
+SHADER STAGES
+vertex
+tessellation control
+tessellation evaluation
+geometry
+fragment
+compute
+
+CORE SCALAR TYPES
+void
+bool
+int
+uint
+float
+double
+
+CORE VECTOR TYPES
+bvec2
+bvec3
+bvec4
+ivec2
+ivec3
+ivec4
+uvec2
+uvec3
+uvec4
+vec2
+vec3
+vec4
+dvec2
+dvec3
+dvec4
+
+CORE MATRIX TYPES
+mat2
+mat3
+mat4
+mat2x2
+mat2x3
+mat2x4
+mat3x2
+mat3x3
+mat3x4
+mat4x2
+mat4x3
+mat4x4
+dmat2
+dmat3
+dmat4
+dmat2x2
+dmat2x3
+dmat2x4
+dmat3x2
+dmat3x3
+dmat3x4
+dmat4x2
+dmat4x3
+dmat4x4
+
+CONTROL / DECLARATION WORDS
+const
+in
+out
+inout
+uniform
+buffer
+shared
+attribute
+varying
+centroid
+sample
+patch
+flat
+smooth
+noperspective
+layout
+invariant
+precise
+highp
+mediump
+lowp
+precision
+struct
+subroutine
+if
+else
+switch
+case
+default
+while
+do
+for
+continue
+break
+return
+discard
+
+OPERATORS / EXPRESSION FORMS
+()
+[]
+.
+++
+--
++
+-
+!
+~
+*
+/
+%
++
+-
+<<
+>>
+<
+>
+<=
+>=
+==
+!=
+&
+^
+|
+&&
+^^
+||
+?:
+=
++=
+-=
+*=
+/=
+%=
+<<=
+>>=
+&=
+^=
+|=
+,
+
+ANGLE / TRIGONOMETRIC BUILT-INS
+radians
+degrees
+sin
+cos
+tan
+asin
+acos
+atan
+sinh
+cosh
+tanh
+asinh
+acosh
+atanh
+
+EXPONENTIAL BUILT-INS
+pow
+exp
+log
+exp2
+log2
+sqrt
+inversesqrt
+
+COMMON BUILT-INS
+abs
+sign
+floor
+trunc
+round
+roundEven
+ceil
+fract
+mod
+modf
+min
+max
+clamp
+mix
+step
+smoothstep
+isnan
+isinf
+floatBitsToInt
+floatBitsToUint
+intBitsToFloat
+uintBitsToFloat
+fma
+frexp
+ldexp
+
+FLOATING PACK / UNPACK BUILT-INS
+packUnorm2x16
+packSnorm2x16
+packUnorm4x8
+packSnorm4x8
+unpackUnorm2x16
+unpackSnorm2x16
+unpackUnorm4x8
+unpackSnorm4x8
+packDouble2x32
+unpackDouble2x32
+packHalf2x16
+unpackHalf2x16
+
+GEOMETRIC BUILT-INS
+length
+distance
+dot
+cross
+normalize
+faceforward
+reflect
+refract
+
+MATRIX BUILT-INS
+matrixCompMult
+outerProduct
+transpose
+determinant
+inverse
+
+VECTOR RELATIONAL BUILT-INS
+lessThan
+lessThanEqual
+greaterThan
+greaterThanEqual
+equal
+notEqual
+any
+all
+not
+
+INTEGER BUILT-INS
+uaddCarry
+usubBorrow
+umulExtended
+imulExtended
+bitfieldExtract
+bitfieldInsert
+bitfieldReverse
+bitCount
+findLSB
+findMSB
+
+TEXTURE QUERY BUILT-INS
+textureSize
+textureQueryLod
+textureQueryLevels
+textureSamples
+
+TEXTURE LOOKUP BUILT-INS
+texture
+textureProj
+textureLod
+textureOffset
+texelFetch
+texelFetchOffset
+textureProjOffset
+textureLodOffset
+textureProjLod
+textureProjLodOffset
+textureGrad
+textureGradOffset
+textureProjGrad
+textureProjGradOffset
+textureGather
+textureGatherOffset
+textureGatherOffsets
+
+ATOMIC COUNTER BUILT-INS
+atomicCounterIncrement
+atomicCounterDecrement
+atomicCounter
+atomicCounterAdd
+atomicCounterSubtract
+atomicCounterMin
+atomicCounterMax
+atomicCounterAnd
+atomicCounterOr
+atomicCounterXor
+atomicCounterExchange
+atomicCounterCompSwap
+
+GENERIC ATOMIC MEMORY BUILT-INS
+atomicAdd
+atomicMin
+atomicMax
+atomicAnd
+atomicOr
+atomicXor
+atomicExchange
+atomicCompSwap
+
+IMAGE BUILT-INS
+imageSize
+imageSamples
+imageLoad
+imageStore
+imageAtomicAdd
+imageAtomicMin
+imageAtomicMax
+imageAtomicAnd
+imageAtomicOr
+imageAtomicXor
+imageAtomicExchange
+imageAtomicCompSwap
+
+GEOMETRY SHADER BUILT-INS
+EmitVertex
+EndPrimitive
+EmitStreamVertex
+EndStreamPrimitive
+
+FRAGMENT DERIVATIVE BUILT-INS
+dFdx
+dFdy
+fwidth
+dFdxFine
+dFdyFine
+fwidthFine
+dFdxCoarse
+dFdyCoarse
+fwidthCoarse
+
+FRAGMENT INTERPOLATION BUILT-INS
+interpolateAtCentroid
+interpolateAtSample
+interpolateAtOffset
+
+SYNCHRONIZATION / MEMORY BUILT-INS
+barrier
+memoryBarrier
+memoryBarrierAtomicCounter
+memoryBarrierBuffer
+memoryBarrierShared
+memoryBarrierImage
+groupMemoryBarrier
+
+CORE 4.60 INVOCATION VOTE BUILT-INS
+anyInvocation
+allInvocations
+allInvocationsEqual
+
+RESOURCE TYPE FAMILIES
+sampler1D
+sampler2D
+sampler3D
+samplerCube
+sampler2DRect
+sampler1DArray
+sampler2DArray
+samplerCubeArray
+samplerBuffer
+sampler2DMS
+sampler2DMSArray
+shadow sampler variants
+isampler variants
+usampler variants
+image1D
+image2D
+image3D
+imageCube
+image2DRect
+image1DArray
+image2DArray
+imageCubeArray
+imageBuffer
+image2DMS
+image2DMSArray
+iimage variants
+uimage variants
+atomic_uint
+
+UAM-SPECIFIC COMPILER LIMITS / POLICIES FROM glsl_frontend.cpp
+GLSLVersion = 460
+MaxPatchVertices = MAX_PATCH_VERTICES
+MaxSamples = 8
+MaxImageSamples = 8
+MaxViewports = 16
+MaxComputeWorkGroupInvocations = 1024
+MaxComputeSharedMemorySize = 65536
+MaxComputeWorkGroupCount = 2147483647, 65535, 65535
+MaxComputeWorkGroupSize = 1024, 1024, 64
+MaxTextureLevels = 15
+Max3DTextureLevels = 12
+MaxCubeTextureLevels = 15
+MaxTextureRectSize = 16384
+MaxArrayTextureLayers = 2048
+MaxDrawBuffers = 8
+MaxColorAttachments = 8
+MaxUniformBlockSize = 65536
+MaxTextureImageUnits per stage = 32
+MaxUniformBlocks per stage = 16
+MaxShaderStorageBlocks per stage = 16
+MaxAtomicCounters per stage = 0
+MaxAtomicBuffers per stage = 0
+MaxImageUniforms per stage = 8
+MaxGeometryOutputVertices = 1024
+MaxGeometryShaderInvocations = 32
+MinProgramTexelOffset = -8
+MaxProgramTexelOffset = 7
+MinProgramTextureGatherOffset = -32
+MaxProgramTextureGatherOffset = 31
+UniformBufferOffsetAlignment = 256
+ShaderStorageBufferOffsetAlignment = 16
+MaxShaderStorageBlockSize = 134217728
+MaxIfDepth = 16
+MaxUnrollIterations = 16384
+
+UAM-SPECIFIC REJECTIONS / ALTERED BEHAVIOR
+blockless/default uniforms rejected by DKSH path
+transform feedback unsupported
+GLSL shader subroutines unsupported
+atomic counters configured unavailable (0 counters / 0 atomic-counter buffers)
+pixel_center_integer unsupported
+origin_upper_left declaration has no effect; coordinate origin is controlled by deko3d device state
+nonconstant integer division/modulo lowered through floating division with warning
+64-bit floating divide/sqrt use approximate native path with warning
+SSBO/image/atomic software bounds checks removed
+separable-program behavior always used
+
+SCOPE / COMPLETENESS
+- This file lists the GLSL 4.60 core operation-name families relevant to UAM's configured desktop-core frontend.
+- UAM's embedded Mesa sources are the final acceptance authority because extension predicates and UAM patches can add/remove overloads relative to a generic GLSL 4.60 implementation.
+- tools/extract_uam_glsl_surface.py mechanically emits source-level built-in function and gl_* variable names from the exact UAM sources and should be diffed against this readable inventory.
