@@ -1,6 +1,8 @@
 IDRIS2 ?= idris2
 IDRIS2_GLSLES ?= ./build/exec/idris2-glsles
 CC ?= cc
+EGL_LIBS ?= -lEGL
+GLES_LIBS ?= -lGLESv3
 
 .PHONY: build backend generate generate-compiler test backend-test check clean \
 	powervr-primitives powervr-primitives-frag powervr-primitives-host
@@ -42,7 +44,7 @@ powervr-primitives-frag: backend
 powervr-primitives-host:
 	mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra tools/powervr_primitives.c \
-		-o build/powervr-primitives -lEGL -lGLESv3 -lm
+		-o build/powervr-primitives $(EGL_LIBS) $(GLES_LIBS) -lm
 
 powervr-primitives: powervr-primitives-frag powervr-primitives-host
 
