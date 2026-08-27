@@ -128,9 +128,10 @@ def main() -> int:
         require("sqrt(" in subtract8, "8D subtraction norm lost Euclidean square root")
 
         rotate8 = shaders["rotate-difference8-to-e1"]
-        require(rotate8.count("sqrt(") >= 8, "8D rotation lost Givens/norm square roots")
-        require(rotate8.count("abs(") >= 7, "8D rotation lost residual checks")
-        require(rotate8.count("max(") >= 10, "8D rotation lost safe denominators/residual reduction")
+        require(rotate8.count("sqrt(") >= 3, "8D rotation lost norm/residual square roots")
+        require(rotate8.count("dot(") >= 6, "8D rotation lost vectorized Householder products")
+        require(" ? " in rotate8, "8D rotation lost the already-aligned identity case")
+        require("vec3(" in rotate8, "8D rotation lost the seven-coordinate residual reduction")
 
     print("PowerVR primitive checks passed: pixel, block, dot4, dot32, subtract8, rotate8")
     return 0
