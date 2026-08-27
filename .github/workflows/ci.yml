@@ -26,7 +26,9 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes chezscheme glslang-tools libgmp-dev
+          sudo apt-get install --yes \
+            chezscheme glslang-tools libgmp-dev \
+            libegl1-mesa-dev libgles2-mesa-dev
 
       - name: Restore Idris 2 compiler and API
         id: idris-cache
@@ -56,6 +58,11 @@ jobs:
 
       - name: Run complete backend checks
         run: make check
+
+      - name: Execute primitive framebuffer probes under Mesa
+        run: |
+          make powervr-primitives GLES_LIBS=-lGLESv2
+          EGL_PLATFORM=surfaceless ./build/powervr-primitives
 
       - name: Reject uncommitted generated output
         run: git diff --exit-code -- generated
