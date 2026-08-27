@@ -6,6 +6,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,25 +30,33 @@ def require(condition: bool, message: str) -> None:
 
 def compile_probe(module: str, output_name: str, output_dir: Path) -> str:
     source = f"src/Example/{module}.idr"
-    result = subprocess.run(
-        [
-            str(BACKEND),
-            "--cg",
-            "glsles",
-            "--source-dir",
-            "src",
-            "--output-dir",
-            str(output_dir),
-            source,
-            "-o",
-            output_name,
-        ],
-        cwd=ROOT,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
+    print(f"compile {output_name} ...", flush=True)
+    started = time.monotonic()
+    try:
+        result = subprocess.run(
+            [
+                str(BACKEND),
+                "--cg",
+                "glsles",
+                "--source-dir",
+                "src",
+                "--output-dir",
+                str(output_dir),
+                source,
+                "-o",
+                output_name,
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise AssertionError(f"{source} exceeded the 60-second teaching-probe compile limit") from error
+    elapsed = time.monotonic() - started
+    print(f"compiled {output_name} in {elapsed:.3f}s", flush=True)
     require(result.returncode == 0, source + " failed:\n" + result.stdout)
     fragment = output_dir / f"{output_name}.frag"
     require(fragment.is_file(), f"backend did not write {fragment.name}")
