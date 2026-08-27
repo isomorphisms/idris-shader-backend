@@ -38,6 +38,8 @@ def compile_probe(module: str, output_name: str, output_dir: Path) -> str:
                 str(BACKEND),
                 "--cg",
                 "glsles",
+                "--directive",
+                "explain-short-names=true",
                 "--source-dir",
                 "src",
                 "--output-dir",
@@ -87,6 +89,12 @@ def main() -> int:
         for module, output_name in PROBES:
             shaders[output_name] = compile_probe(module, output_name, output_dir)
             validate_link(output_dir / f"{output_name}.frag")
+
+        for output_name, shader in shaders.items():
+            require(
+                shader.startswith("// Reading guide:"),
+                output_name + " did not receive the teaching-mode short-name comments",
+            )
 
         pixel = shaders["set-pixel-3-rgb-52-39-182"]
         require("in vec2 v_ndc;" in pixel, "pixel-3 probe lost its pixel-position input")

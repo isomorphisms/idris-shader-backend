@@ -7,6 +7,16 @@ import Shader.Source
 ||| Subtract two 8D vectors (stored as two vec4 chunks), then apply seven
 ||| ordinary Givens plane rotations. The resulting direction is ||a-b|| e1:
 ||| all coordinates except the first should be numerically near zero.
+-- SVec 4 = one four-component shader-vector chunk.
+-- vsub a b = componentwise vector subtraction.
+-- x/y/z/w = first/second/third/fourth components of a vec4 chunk.
+-- q0..q7 = the eight scalar coordinates of the difference vector.
+-- sqrtF = floating-point square root.
+-- maxF a b = floating-point maximum; here it prevents division by a tiny radius.
+-- c1..c7 and s1..s7 = cosine-like and sine-like coefficients of the Givens rotations.
+-- z1..z7 = coordinates each rotation is trying to drive to zero.
+-- absF = floating-point absolute value; residual measures how far from zero those coordinates remain.
+-- vec4 axis_ratio residual residual 1.0 = pack the two diagnostics into RGBA output.
 %export "glsles:fragment|u_a0=uniform,u_a1=uniform,u_b0=uniform,u_b1=uniform"
 rotate_difference8_to_e1 :
   SVec 4 -> SVec 4 -> SVec 4 -> SVec 4 -> SVec 4

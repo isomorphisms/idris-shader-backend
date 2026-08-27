@@ -51,6 +51,25 @@ directiveValue needle (value :: rest) =
      then Just (pack (drop (length (unpack needle)) (unpack value)))
      else directiveValue needle rest
 
+||| Human reading guide for teaching shaders. These are GLSL comments and are
+||| ignored by the GLSL compiler and PowerVR driver. The ordinary production
+||| emitter remains unchanged unless explain-short-names=true is requested.
+explanatoryHeader : String
+explanatoryHeader = unlines
+  [ "// Reading guide: these comments are for humans; the GLSL compiler ignores them."
+  , "// glsles = OpenGL ES Shading Language; fragment = code run for each fragment/pixel candidate."
+  , "// SVec n in the Idris source = shader vector with exactly n components."
+  , "// NDC / v_ndc = normalized device coordinates, roughly -1 to +1 across the fullscreen fixture."
+  , "// u_... = uniform value shared by fragments; v_... = interpolated fragment input naming convention."
+  , "// vec2/vec3/vec4 = vectors with 2/3/4 components; a colour vec4 is red, green, blue, alpha."
+  , "// x/y/z/w = first/second/third/fourth vector component."
+  , "// vadd/vsub/scale = vector add/subtract/scale; dot = dot product; length = Euclidean length."
+  , "// F suffix = floating-point helper: absF, sqrtF, minF, maxF, atan2F, powF, clampF, mixF, etc."
+  , "// In emitted GLSL those become abs, sqrt, min, max, atan, pow, clamp, mix, and related built-ins."
+  , "// _idris_t0, _idris_t1, ... = compiler-created temporary intermediate values."
+  , ""
+  ]
+
 public export
 compileGLSLES :
   Ref Ctxt Defs ->
@@ -78,7 +97,13 @@ compileGLSLES defs syn tmpDir outputDir term outfile = do
     Just path => do
       renderedIR <- fromEither (dumpFragmentIR program)
       writeShader path renderedIR
-  source <- fromEither (emitFragment program)
+  emitted <- fromEither (emitFragment program)
+  source <- case directiveValue "explain-short-names=" (directives session) of
+    Nothing => pure emitted
+    Just "false" => pure emitted
+    Just "true" => pure (explanatoryHeader ++ emitted)
+    Just value => backendError
+      ("explain-short-names directive expects true or false, received '" ++ value ++ "'")
   let output = outputDir ++ "/" ++ outfile ++ ".frag"
   writeShader output source
   pure (Just output)
