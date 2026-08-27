@@ -1,0 +1,1 @@
+Not an Apple-specific instruction set. Target public Metal/MSL or historical OpenGL; Intel GPU machine instructions are outside this Apple shader-backend contract.

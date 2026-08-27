@@ -1,0 +1,1 @@
+Not an Apple-specific GPU ISA. Public Apple target: Metal/MSL. Hardware ISA belongs to AMD architecture documentation/backend work.

@@ -1,0 +1,3 @@
+NO PUBLIC APPLE GPU MACHINE OPCODE LIST.
+Public target: MSL/Metal. Capability profile: Apple10.
+Canonical public operation inventory: ../../../metal/PUBLIC_OPERATIONS.txt

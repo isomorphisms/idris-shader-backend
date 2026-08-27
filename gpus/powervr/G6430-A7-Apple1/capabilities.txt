@@ -1,0 +1,3 @@
+historical Metal Apple1 baseline
+basic vertex/fragment/compute Metal support
+no Apple4 imageblock/tile-shader programming model

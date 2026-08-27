@@ -1,0 +1,3 @@
+No stable public PowerVR G6430 machine-opcode ABI for Apple apps.
+Public shader target: Metal/OpenGL ES according to deployment environment.
+Metal capability profile: historical Apple1.

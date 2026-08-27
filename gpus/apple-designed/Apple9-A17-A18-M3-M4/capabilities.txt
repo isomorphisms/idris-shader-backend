@@ -1,0 +1,10 @@
+inherits Apple8
+64-bit atomics
+indirect mesh arguments
+indirect command buffer mesh draws
+denoised upscaling
+row-major ray-tracing acceleration structures
+per-component ray motion
+on-chip ray-result storage
+address-driven acceleration-structure builds
+intersection-function buffers

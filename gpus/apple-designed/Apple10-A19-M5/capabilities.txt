@@ -1,0 +1,8 @@
+inherits Apple9
+sampler min/max reduction
+sampler LOD bias
+pre-raster per-vertex value access
+depth-bounds testing
+ICB raster/depth/stencil state
+atomics on cube maps/cube-map arrays
+universal texture compression

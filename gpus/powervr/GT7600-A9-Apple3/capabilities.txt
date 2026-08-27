@@ -1,0 +1,9 @@
+inherits Apple2
+64-bit integer math
+tessellation
+memory barriers
+indirect draw/dispatch argument support
+indirect command buffers render/compute
+read/write buffers in functions
+comparison samplers
+texture arrays read

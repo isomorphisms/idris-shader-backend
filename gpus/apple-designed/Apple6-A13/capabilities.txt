@@ -1,0 +1,14 @@
+inherits Apple5
+quad ballot
+SIMD-scoped permute
+argument buffers tier 2
+sparse textures
+variable rasterization rate
+vertex amplification
+dynamic libraries
+ray tracing compute/render
+texture atomics
+function pointers compute/render
+bfloat
+global shader built-ins/bindings
+shader memory coherence

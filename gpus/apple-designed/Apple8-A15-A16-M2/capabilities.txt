@@ -1,0 +1,6 @@
+inherits Apple7
+SIMD shift-and-fill family
+sparse depth/stencil
+lossy compression
+full texture LOD query
+Metal4 sparse placement resources where supported

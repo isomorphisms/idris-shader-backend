@@ -1,0 +1,5 @@
+NO PUBLIC APPLE GPU MACHINE OPCODE LIST.
+
+Public compiler target: Metal Shading Language / Metal API.
+Capability profile: Apple4.
+Canonical public operation inventory: ../../../metal/PUBLIC_OPERATIONS.txt

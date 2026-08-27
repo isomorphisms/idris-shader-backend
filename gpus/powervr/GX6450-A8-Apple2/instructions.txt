@@ -1,0 +1,3 @@
+No stable public PowerVR GX6450 machine-opcode ABI for Apple apps.
+Public shader target: Metal/MSL or historical OpenGL ES.
+Capability profile: Apple2.

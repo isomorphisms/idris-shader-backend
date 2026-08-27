@@ -1,0 +1,11 @@
+inherits Apple3 public Metal capabilities
+imageblocks
+tile shaders
+imageblock sample coverage
+raster-order groups
+quad-scoped permute
+nonuniform threadgroups
+read/write textures
+read/write cube maps
+dynamic stride
+relaxed math

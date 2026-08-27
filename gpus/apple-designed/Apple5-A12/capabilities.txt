@@ -1,0 +1,6 @@
+inherits Apple4
+layered rendering
+multiple viewports
+stencil feedback/resolve
+nonsquare tile dispatch
+float RGB9E5 / RG11B10 capability

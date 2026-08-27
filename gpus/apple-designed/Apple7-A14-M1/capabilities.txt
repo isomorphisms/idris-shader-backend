@@ -1,0 +1,11 @@
+inherits Apple6
+quad reductions
+SIMD reductions
+SIMD matrix multiply
+mesh shading
+primitive ID
+barycentric coordinates
+floating-point atomics
+acquire/release atomic memory order
+fragment visibility accumulation
+Metal 4-era argument-table/command/tensor capabilities where OS/toolchain supports them

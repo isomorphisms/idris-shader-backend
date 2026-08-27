@@ -1,0 +1,294 @@
+# Public Metal/MSL operation and capability inventory
+# Scope: compiler-relevant public operations/features, grouped by minimum Apple GPU family when Apple's current feature table specifies one.
+# This is NOT an Apple GPU machine-opcode list.
+
+# Core shader stages / execution
+vertex function
+fragment function
+kernel/compute function
+tile function
+mesh function
+object function
+thread position in grid
+thread position in threadgroup
+thread index in SIMD-group
+SIMD-group index
+quad lane operations
+threadgroup memory
+threadgroup barrier
+SIMD-group barrier
+memory barrier
+raster-order group
+imageblock
+imageblock data access
+imageblock sample coverage
+memoryless render target
+
+# Scalar/vector mathematical operations used by this backend
+abs
+acos
+acosh
+asin
+asinh
+atan
+atan2
+atanh
+ceil
+clamp
+cos
+cosh
+cross
+dfdx
+dfdy
+distance
+dot
+exp
+exp2
+floor
+fma
+fract
+frexp
+fwidth
+length
+log
+log2
+max
+min
+mix
+normalize
+pow
+reflect
+refract
+round
+rsqrt
+sign
+sin
+sinh
+smoothstep
+sqrt
+step
+tan
+tanh
+trunc
+
+# Common integer/bit operations
+popcount
+clz
+ctz
+reverse_bits
+extract_bits
+insert_bits
+rotate
+select
+min
+max
+abs
+
+# Atomics / synchronization
+atomic_load
+atomic_store
+atomic_exchange
+atomic_compare_exchange
+atomic_fetch_add
+atomic_fetch_sub
+atomic_fetch_and
+atomic_fetch_or
+atomic_fetch_xor
+atomic_fetch_min
+atomic_fetch_max
+acquire memory order
+release memory order
+acquire-release memory order
+relaxed memory order
+threadgroup_barrier
+simdgroup_barrier
+memory barrier
+texture atomics
+floating-point atomics
+64-bit atomics
+
+# Quad operations
+quad permute
+quad ballot
+quad reduction
+quad broadcast/shuffle family
+
+# SIMD-group operations
+simd_sum
+simd_product
+simd_min / simd_minimum family
+simd_max / simd_maximum family
+simd_and
+simd_or
+simd_xor
+SIMD permute/shuffle family
+SIMD ballot/vote family
+SIMD reduction family
+SIMD shift-and-fill family
+SIMD-group matrix multiply
+simdgroup_float8x8 family
+
+# Texture/image operations
+sample
+sample_compare
+read
+write
+gather
+gather_compare
+get_width
+get_height
+get_depth
+get_array_size
+get_num_mip_levels
+get_num_samples
+calculate_clamped_lod
+calculate_unclamped_lod
+texture swizzle
+read/write textures
+read/write cube maps
+texture arrays read
+texture arrays write
+texture atomics
+block texture reads
+read clamping
+integer-coordinate offsets
+sampler min/max reduction
+sampler LOD bias
+
+# Resource / binding model
+buffers
+textures
+samplers
+argument buffers tier 1
+argument buffers tier 2
+function constants / specialization
+resource heaps
+placement heaps
+sparse textures
+sparse buffers
+binary archives
+dynamic libraries
+function pointers
+function tables / intersection-function buffers
+argument tables (Metal 4)
+
+# Draw/dispatch / command mechanisms
+indirect draw arguments
+indirect dispatch arguments
+indirect command buffers - render
+indirect command buffers - compute
+indirect mesh arguments
+ICB mesh draws
+ICB raster/depth/stencil state
+base vertex
+base instance
+tile dispatch
+nonsquare tile dispatch
+programmable sample positions
+vertex amplification
+layered rendering
+multiple viewports
+
+# Tile/imageblock mechanisms -- Apple4+
+imageblocks
+tile shaders
+imageblock sample coverage
+raster-order groups
+quad-scoped permute
+nonuniform threadgroups
+
+# Apple5+
+nonsquare tile dispatch
+layered rendering
+multiple viewports
+stencil feedback/resolve
+
+# Apple6+
+quad ballot
+SIMD-scoped permute
+argument buffers tier 2
+sparse textures
+variable rasterization rate
+vertex amplification
+dynamic libraries
+ray tracing in compute
+ray tracing in render
+texture atomics
+function pointers in compute
+function pointers in render
+bfloat
+shader global built-ins/bindings
+shader memory coherence
+
+# Apple7+
+quad reductions
+SIMD reductions
+SIMD matrix multiply
+mesh shading
+primitive ID
+barycentric coordinates
+floating-point atomics
+acquire/release atomic memory orders
+MetalFX temporal upscaling
+Metal 4 argument tables
+Metal 4 command allocators
+Metal 4 decoupled command queues
+Metal 4 command barriers
+Metal 4 dedicated compilation contexts
+Metal 4 tensors / machine-learning operations
+
+# Apple8+
+SIMD shift/fill
+sparse depth/stencil
+lossy compression
+full texture-LOD query
+Metal 4 sparse placement resources
+
+# Apple9+
+64-bit atomics
+indirect mesh arguments
+ICB mesh draws
+ray tracing row-major acceleration structures
+ray tracing per-component motion
+on-chip ray-result storage
+address-driven acceleration-structure builds
+intersection-function buffers
+
+# Apple10+
+sampler min/max reduction
+sampler LOD bias
+access to pre-raster per-vertex values
+depth-bounds testing
+ICB raster/depth/stencil state
+atomics on cube maps / cube-map arrays
+universal texture compression
+
+# Public API verbs directly relevant to tile work
+MTLDevice.supportsFamily
+MTLRenderCommandEncoder.dispatchThreadsPerTile
+MTLComputeCommandEncoder.setImageblockWidth:height:
+MTLResourceStorageModeMemoryless
+imageblock<...>
+imageblock.data(...)
+[[imageblock_data]]
+[[threadgroup_imageblock]]
+[[raster_order_group(n)]]
+
+# Precision/type surface of special interest
+half
+float
+double (availability/stage restrictions must be target-checked)
+bfloat
+short
+int
+long
+ushort
+uint
+ulong
+half2/3/4
+float2/3/4
+integer vectors
+matrix types
+packed vector types
+atomic integer types
+atomic floating-point types where supported

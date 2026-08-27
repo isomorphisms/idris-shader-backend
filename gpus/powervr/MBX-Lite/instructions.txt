@@ -1,0 +1,2 @@
+No stable public Apple application-level PowerVR MBX machine-opcode ISA is used by this backend.
+Historical target surface: OpenGL ES-era APIs/shaders where supported.

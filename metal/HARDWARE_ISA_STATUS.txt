@@ -1,0 +1,13 @@
+APPLE GPU HARDWARE ISA STATUS
+
+Apple does not publish a stable public machine-opcode ISA/encoding contract for Apple-designed GPUs comparable to Arm A64 or x86-64.
+
+DO NOT invent an opcode list.
+DO NOT make reverse-engineered encodings the semantic compiler target.
+
+Public target layers:
+- Metal Shading Language (MSL)
+- Metal API objects/commands
+- Metal GPU-family feature/capability tables
+
+For historical PowerVR-based Apple SoCs, the public app-facing target was OpenGL ES and later Metal; PowerVR microcode/USC details are likewise not a stable Apple application ABI.
