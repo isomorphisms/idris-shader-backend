@@ -70,6 +70,14 @@ explanatoryHeader = unlines
   , ""
   ]
 
+||| GLSL ES requires #version to be the first statement, before even comments.
+||| Keep that line first and insert the opt-in reading guide immediately after it.
+explainSource : String -> String
+explainSource source =
+  case lines source of
+    [] => source
+    version :: body => unlines (version :: (lines explanatoryHeader ++ body))
+
 public export
 compileGLSLES :
   Ref Ctxt Defs ->
@@ -101,7 +109,7 @@ compileGLSLES defs syn tmpDir outputDir term outfile = do
   source <- case directiveValue "explain-short-names=" (directives session) of
     Nothing => pure emitted
     Just "false" => pure emitted
-    Just "true" => pure (explanatoryHeader ++ emitted)
+    Just "true" => pure (explainSource emitted)
     Just value => backendError
       ("explain-short-names directive expects true or false, received '" ++ value ++ "'")
   let output = outputDir ++ "/" ++ outfile ++ ".frag"

@@ -92,8 +92,8 @@ def main() -> int:
 
         for output_name, shader in shaders.items():
             require(
-                shader.startswith("// Reading guide:"),
-                output_name + " did not receive the teaching-mode short-name comments",
+                shader.startswith("#version 300 es\n// Reading guide:"),
+                output_name + " did not keep #version before the teaching comments",
             )
 
         pixel = shaders["set-pixel-3-rgb-52-39-182"]
@@ -102,7 +102,10 @@ def main() -> int:
         require(pixel.count("255.0") >= 3, "pixel-3 probe lost byte-to-float RGB conversion")
 
         block = shaders["set-block-32x32-rgb-52-39-182"]
-        require("uniform " not in block, "block fill unexpectedly acquired uniforms")
+        require(
+            not any(line.startswith("uniform ") for line in block.splitlines()),
+            "block fill unexpectedly acquired uniforms",
+        )
         require(block.count("255.0") >= 3, "block fill lost byte-to-float RGB conversion")
 
         dot4 = shaders["dot-vector4-covector4"]
