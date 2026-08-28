@@ -37,12 +37,10 @@ fail() {
 command -v "$ADB" >/dev/null 2>&1 || fail "adb not found"
 adb_cmd get-state >/dev/null 2>&1 || fail "no usable adb device"
 command -v git >/dev/null 2>&1 || fail "git not found"
+command -v make >/dev/null 2>&1 || fail "make not found"
 git diff --quiet && git diff --cached --quiet || \
   fail "tracked working tree is dirty; acceptance evidence must name an exact commit"
 COMMIT=$(git rev-parse HEAD)
-
-# Generate the exact GLSL exercised by this branch before anything is copied.
-make powervr-primitives-frag
 
 NDK=${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}
 if [ -z "$NDK" ]; then
@@ -74,6 +72,12 @@ esac
 TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/$HOST_TAG"
 CC="$TOOLCHAIN/bin/clang"
 [ -x "$CC" ] || fail "NDK compiler not found: $CC"
+
+# Generate first, then prove that the generated fragments are exactly the
+# versions tracked by the named commit.
+make powervr-primitives-frag
+git diff --quiet -- generated || \
+  fail "regenerated GLSL differs from commit $COMMIT; commit it or use the matching backend"
 
 mkdir -p build "$(dirname -- "$EVIDENCE")"
 "$CC" --target="${TRIPLE}${ANDROID_API}" \
@@ -111,10 +115,14 @@ esac
   echo "command: make powervr-phone-accept"
   echo "utc: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   echo "commit: $COMMIT"
+  echo "source.generated: matches commit"
   echo "device.manufacturer: $(adb_cmd shell getprop ro.product.manufacturer | tr -d '\r')"
   echo "device.model: $(adb_cmd shell getprop ro.product.model | tr -d '\r')"
   echo "device.android: $(adb_cmd shell getprop ro.build.version.release | tr -d '\r')"
+  echo "device.sdk: $(adb_cmd shell getprop ro.build.version.sdk | tr -d '\r')"
   echo "device.abi: $ABI"
+  echo "device.abilist: $(adb_cmd shell getprop ro.product.cpu.abilist | tr -d '\r')"
+  echo "runner.exit: $STATUS"
   echo
   sed '/^__POWERVR_EXIT__=/d' "$RUN_TMP"
 } >"$TMP"
@@ -130,9 +138,13 @@ grep -Eq '^GL_RENDERER: .+' "$TMP" || \
 grep -Eiq '^GL_(VENDOR|RENDERER):.*(PowerVR|Imagination)' "$TMP" || \
   fail "GL_VENDOR/GL_RENDERER does not identify PowerVR/Imagination; evidence saved to $EVIDENCE"
 
+COMPILE_LINK_COUNT=$(grep -Ec '^[1-6] shader_compile_link: PASS' "$TMP" || true)
+[ "$COMPILE_LINK_COUNT" -eq 6 ] || \
+  fail "expected six shader compile/link PASS lines, found $COMPILE_LINK_COUNT; evidence saved to $EVIDENCE"
+
 PASS_COUNT=$(grep -Ec '^[1-6] .*: PASS' "$TMP" || true)
 [ "$PASS_COUNT" -eq 6 ] || \
   fail "expected six framebuffer PASS lines, found $PASS_COUNT; evidence saved to $EVIDENCE"
 
-printf '\nacceptance.renderer: PASS\nacceptance.framebuffers: 6/6 PASS\nacceptance: PASS\n' >>"$EVIDENCE"
+printf '\nacceptance.generated: PASS\nacceptance.renderer: PASS\nacceptance.compile_link: 6/6 PASS\nacceptance.framebuffers: 6/6 PASS\nacceptance: PASS\n' >>"$EVIDENCE"
 printf '\nPowerVR phone acceptance: PASS\nevidence: %s\n' "$EVIDENCE"
