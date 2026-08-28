@@ -189,7 +189,11 @@ int main(void) {
 
   GLuint vertex = compile_shader(GL_VERTEX_SHADER, vertex_source, "shared vertex shader");
   GLuint programs[6];
-  for (int i = 0; i < 6; ++i) programs[i] = link_fragment(vertex, paths[i]);
+  for (int i = 0; i < 6; ++i) {
+    programs[i] = link_fragment(vertex, paths[i]);
+    printf("%d shader_compile_link: PASS (%s)\n", i + 1, paths[i]);
+  }
+  putchar('\n');
 
   /* 1. Zero-based pixel 3 of a 4x1 framebuffer. */
   draw(programs[0], 4, 1, "1 set_pixel_3_to_rgb_52_39_182");
