@@ -141,13 +141,14 @@ static double benchmark_draw(GLuint program, int width, int height, const char *
 }
 
 int main(void) {
-  const char *paths[6] = {
+  const char *paths[7] = {
       "generated/set-pixel-3-rgb-52-39-182.frag",
       "generated/set-block-32x32-rgb-52-39-182.frag",
       "generated/dot-vector4-covector4.frag",
       "generated/dot-vector32-covector32.frag",
       "generated/subtract-vector8-norm.frag",
       "generated/rotate-difference8-to-e1.frag",
+      "generated/givens-rotate2-to-e1.frag",
   };
 
   EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -188,8 +189,8 @@ int main(void) {
   printf("GLSL: %s\n\n", (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
   GLuint vertex = compile_shader(GL_VERTEX_SHADER, vertex_source, "shared vertex shader");
-  GLuint programs[6];
-  for (int i = 0; i < 6; ++i) {
+  GLuint programs[7];
+  for (int i = 0; i < 7; ++i) {
     programs[i] = link_fragment(vertex, paths[i]);
     printf("%d shader_compile_link: PASS (%s)\n", i + 1, paths[i]);
   }
@@ -281,8 +282,31 @@ int main(void) {
   glUniform4fv(uniform_location(programs[5], "u_b1"), 1, b1);
   draw(programs[5], 1, 1, "6 rotate_difference8_to_e1");
   glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
-  require_pixel(pixel, 255, 0, 0, 255, 3, "8D Givens rotation to e1");
+  require_pixel(pixel, 255, 0, 0, 255, 3, "8D Householder-based proper rotation to e1");
   puts("6 rotate_difference8_to_e1: PASS");
+
+  /* 7. A genuine Givens construction + application, including edge cases. */
+  const GLfloat givens_cases[4][2] = {
+      {0.3f, 0.4f},
+      {-0.3f, 0.4f},
+      {0.5f, 0.0f},
+      {0.0f, 0.0f},
+  };
+  const char *givens_case_labels[4] = {
+      "Givens positive pair",
+      "Givens negative-first-coordinate pair",
+      "Givens already aligned pair",
+      "Givens zero pair",
+  };
+  GLint givens_pair = uniform_location(programs[6], "u_pair");
+  for (int i = 0; i < 4; ++i) {
+    glUseProgram(programs[6]);
+    glUniform2fv(givens_pair, 1, givens_cases[i]);
+    draw(programs[6], 1, 1, "7 givens_rotate2_to_e1");
+    glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+    require_pixel(pixel, 255, 0, 0, 255, 3, givens_case_labels[i]);
+  }
+  puts("7 givens_rotate2_to_e1: PASS (4 cases)");
 
   double pixel_seconds = benchmark_draw(programs[0], 4, 1, "1 set_pixel_3_to_rgb_52_39_182");
   double block_seconds = benchmark_draw(programs[1], 32, 32, "2 set_block_32x32_to_rgb_52_39_182");
@@ -291,7 +315,7 @@ int main(void) {
   printf("  32x32 block-fill draw:    %.3f us/draw\n", block_seconds * 1e6);
   printf("  block/pixel ratio:         %.3fx\n", block_seconds / pixel_seconds);
 
-  for (int i = 0; i < 6; ++i) glDeleteProgram(programs[i]);
+  for (int i = 0; i < 7; ++i) glDeleteProgram(programs[i]);
   glDeleteShader(vertex);
   eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
   eglDestroyContext(display, context);

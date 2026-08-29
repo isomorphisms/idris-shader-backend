@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile the six small PowerVR teaching probes and check their GLSL contracts."""
+"""Compile the seven small PowerVR teaching probes and check their GLSL contracts."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ PROBES = [
     ("DotVector32Covector32", "dot-vector32-covector32"),
     ("SubtractVector8Norm", "subtract-vector8-norm"),
     ("RotateDifference8ToE1", "rotate-difference8-to-e1"),
+    ("GivensRotate2ToE1", "givens-rotate2-to-e1"),
 ]
 
 
@@ -125,7 +126,14 @@ def main() -> int:
         require(" ? " in rotate8, "8D rotation lost the already-aligned identity case")
         require("vec3(" in rotate8, "8D rotation lost the seven-coordinate residual reduction")
 
-    print("PowerVR primitive checks passed: pixel, block, dot4, dot32, subtract8, rotate8")
+        givens2 = shaders["givens-rotate2-to-e1"]
+        require("uniform vec2 u_pair;" in givens2, "Givens probe lost its plane input")
+        require(givens2.count("sqrt(") >= 2, "Givens probe lost norm construction/preservation")
+        require("max(" in givens2, "Givens probe lost its finite zero-vector guard")
+        require(givens2.count("abs(") >= 2, "Givens probe lost residual/norm-error checks")
+        require(" ? " in givens2, "Givens probe lost its explicit zero-vector case")
+
+    print("PowerVR primitive checks passed: pixel, block, dot4, dot32, subtract8, rotate8, givens2")
     return 0
 
 
