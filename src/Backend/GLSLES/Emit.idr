@@ -7,6 +7,13 @@ import Data.String
 
 %default total
 
+public export
+data FloatPrecision = FloatHigh | FloatMedium
+
+precisionText : FloatPrecision -> String
+precisionText FloatHigh = "highp"
+precisionText FloatMedium = "mediump"
+
 arrayElementType : ArrayElementTy -> Either String String
 arrayElementType AFloat = Right "float"
 arrayElementType ABool = Right "bool"
@@ -199,17 +206,18 @@ emitBindings (MkBinding ty name rhs :: rest) aliases cache reversedLines =
            in emitBindings rest ((name, name) :: aliases)
                                 ((key, name) :: cache) (line :: reversedLines)
 
-||| Emit deterministic GLSL ES 3.00. Repeated pure ANF right-hand sides are
-||| coalesced while preserving the readable temporary-based form.
+||| Emit deterministic GLSL ES 3.00 with an explicit default floating-point
+||| precision. `FloatMedium` preserves a caller's narrow-float intent without
+||| making it the backend-wide default.
 public export
-emitFragment : FragmentProgram -> Either String String
-emitFragment program = do
+emitFragmentWithPrecision : FloatPrecision -> FragmentProgram -> Either String String
+emitFragmentWithPrecision precision program = do
   declarations <- traverse declaration (entryInterface (spec program))
   (aliases, body) <- emitBindings (bindings program) [] [] []
   let output = operandText aliases (result program)
       source =
         [ "#version 300 es"
-        , "precision highp float;"
+        , "precision " ++ precisionText precision ++ " float;"
         , "precision highp int;"
         , ""
         ] ++ declarations ++
@@ -222,3 +230,11 @@ emitFragment program = do
         , ""
         ]
   Right (unlines source)
+
+||| Emit deterministic GLSL ES 3.00. Repeated pure ANF right-hand sides are
+||| coalesced while preserving the readable temporary-based form. High precision
+||| remains the compatibility default; target-specific callers must opt into
+||| narrower arithmetic explicitly.
+public export
+emitFragment : FragmentProgram -> Either String String
+emitFragment = emitFragmentWithPrecision FloatHigh

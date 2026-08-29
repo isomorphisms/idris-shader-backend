@@ -21,8 +21,13 @@ def compile_source(
     output_name: str,
     *,
     dump_ir: Path | None = None,
+    float_precision: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    directive = [] if dump_ir is None else ["--directive", f"dump-ir={dump_ir}"]
+    directives: list[str] = []
+    if dump_ir is not None:
+        directives.extend(["--directive", f"dump-ir={dump_ir}"])
+    if float_precision is not None:
+        directives.extend(["--directive", f"float-precision={float_precision}"])
     return subprocess.run(
         [
             str(BACKEND),
@@ -32,7 +37,7 @@ def compile_source(
             "src",
             "--output-dir",
             str(output_dir),
-            *directive,
+            *directives,
             source,
             "-o",
             output_name,
@@ -112,6 +117,41 @@ def main() -> int:
                 )
             )
             raise AssertionError("compiler shader differs from expected output:\n" + difference)
+
+        medium = compile_source(
+            "src/Example/CompilerSphere.idr",
+            temporary,
+            "compiler-sphere-medium",
+            float_precision="mediump",
+        )
+        require(medium.returncode == 0, "mediump shader failed:\n" + medium.stdout)
+        medium_path = temporary / "compiler-sphere-medium.frag"
+        require(medium_path.is_file(), "mediump backend did not write a fragment shader")
+        medium_source = medium_path.read_text()
+        require(
+            "precision mediump float;" in medium_source,
+            "mediump directive did not reach emitted GLSL",
+        )
+        require(
+            "precision highp float;" not in medium_source,
+            "mediump shader retained the highp floating-point default",
+        )
+        validate_fragment(medium_path)
+
+        bad_precision = compile_source(
+            "src/Example/CompilerSphere.idr",
+            temporary,
+            "compiler-sphere-bad-precision",
+            float_precision="half",
+        )
+        require(
+            "float-precision must be highp or mediump" in bad_precision.stdout,
+            "invalid precision directive was not rejected:\n" + bad_precision.stdout,
+        )
+        require(
+            not (temporary / "compiler-sphere-bad-precision.frag").exists(),
+            "invalid precision directive still wrote a shader",
+        )
 
         reveal_ir_dump = temporary / "disc-reveal.ir"
         reveal = compile_source(
@@ -220,8 +260,8 @@ def main() -> int:
         )
 
     print(
-        "backend checks passed: source lowering, expected outputs, phase portrait math, "
-        "fixed uniform arrays, four rejections, dimension proof"
+        "backend checks passed: source lowering, expected outputs, explicit precision, "
+        "phase portrait math, fixed uniform arrays, four rejections, dimension proof"
     )
     return 0
 
