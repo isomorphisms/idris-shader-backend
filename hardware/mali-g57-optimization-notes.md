@@ -20,7 +20,7 @@ The checked-in Vulkan profile reports:
 
 Those are compiler-visible facts for this target. They may be used as capability gates without guessing from the product name.
 
-## First compiler optimization: preserve narrow-float intent
+## Implemented: explicit narrow-float choice
 
 The GLSL ES emitter used to hard-code:
 
@@ -38,7 +38,19 @@ and retains `highp` as the compatibility default.
 
 This is deliberately opt-in. The Vulkan profile proves native Float16 exists on this device, and Arm's Valhall guidance treats narrow FP16 arithmetic as a major throughput and register-pressure optimization, but the GLSL ES `mediump` contract is not being silently equated with exact IEEE binary16 semantics for every shader. A shader should only be narrowed when its numerical error budget permits it.
 
-The next precision step should move the choice from a whole-shader directive into the typed shader IR so individual values can remain narrow or wide intentionally.
+The next precision step is to move the choice from a whole-shader directive into the typed shader IR so individual values can remain narrow or wide intentionally.
+
+## Implemented: keep expensive branch work behind real control flow
+
+The ANF lowering still represents an Idris boolean case as a typed `RSelect`, which is a useful simple semantic form. A structure-recovery pass before GLSL emission now distinguishes cheap selection from expensive branch-local work.
+
+For each select it follows the typed local-dependency chains of the two results, keeps shared or externally used values outside the branch, and estimates the cost of the work which is genuinely exclusive to each side. Cheap scalar choices stay readable GLSL ternaries. A sufficiently expensive pure branch becomes a real `if`/`else`, with its exclusive temporaries emitted inside the branch.
+
+`DiscReveal` is the first useful real case. For a negative disc radius the shader now tests the no-mask sentinel before computing world coordinates, distance, `sqrt`, boundary width, and clamp work. The later gray texture still needs `v_ndc` and resolution, so those inexpensive values are read again after the branch instead of forcing the expensive distance chain to remain live outside it.
+
+A separate structured-branch fixture verifies that expensive `sqrt`/`sin` work occurs after the `if`, while the existing compiler-sphere fixture verifies that cheap conditionals remain ternary selects.
+
+The present cost weights are deliberately small and inspectable rather than a claim about exact Mali cycle counts. Tune them only after examining generated code or measurements from the Mali toolchain/tablet.
 
 ## Highest-confidence next passes
 
@@ -50,21 +62,15 @@ Useful first candidates for narrow arithmetic are final color formation, bounded
 
 ### 2. Register-pressure gate
 
-Arm's Mali Offline Compiler reports exact work-register use and stack spilling for Valhall. Add a target check that records these for representative generated shaders. Treat crossing a register-allocation/occupancy boundary or introducing spills as a regression even when static instruction count falls.
+Arm's Mali Offline Compiler reports work-register use and stack spilling for Valhall. Add a target check that records these for representative generated shaders. Treat crossing a register-allocation/occupancy boundary or introducing spills as a regression even when static instruction count falls.
 
-Do not encode a guessed register allocator model in Idriç. Let the driver compiler remain authoritative and use its reported result as an oracle.
+Do not encode a guessed register allocator model in Idriç. Let the target compiler remain authoritative and use its reported result as an oracle.
 
-### 3. Keep expensive exceptional work behind real control flow
-
-The current ANF lowering turns Idris boolean cases into precomputed branch values followed by a GLSL ternary. This can make both branches execute before selection. That is hostile to the intended ordinary-region / exceptional-region renderer split.
-
-Preserve structured control flow when either branch contains substantial work. Keep cheap scalar selects as selects. The target rule should be based on branch cost and divergence, not on a blanket preference for either `if` or `?:`.
-
-### 4. Subgroup-aware compute shapes
+### 3. Subgroup-aware compute shapes
 
 The device reports a fixed subgroup width of 16. Compute workgroup candidates should therefore be multiples of 16 and remain within the 512-invocation limit. Do not simply choose 512: compare sensible candidates such as 64, 128, and 256 against register use, shared-memory use, and occupancy.
 
-### 5. 8-bit dot-product path
+### 4. 8-bit dot-product path
 
 Where a later workload genuinely has quantized integer dot products, prefer the device's reported accelerated 8-bit signed/unsigned and packed 4x8 forms. Do not route floating-point geometry through integer quantization merely to use this unit.
 
