@@ -28,6 +28,7 @@ test:
 	./build/exec/idris-glsl-es-tests
 
 backend-test: backend
+	python3 tools/show_disc_reveal_diff.py
 	python3 tools/check_backend.py
 	python3 tools/check_shared_factor_portrait.py
 	python3 tools/check_analytic_continuation.py
