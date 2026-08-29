@@ -41,6 +41,8 @@ powervr-primitives-frag: backend
 		src/Example/SubtractVector8Norm.idr -o subtract-vector8-norm
 	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
 		src/Example/RotateDifference8ToE1.idr -o rotate-difference8-to-e1
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+		src/Example/GivensRotate2ToE1.idr -o givens-rotate2-to-e1
 
 powervr-primitives-host:
 	mkdir -p build
