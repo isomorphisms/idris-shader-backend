@@ -36,20 +36,25 @@ void main() {
   float _idris_t21 = (2.0 * _idris_t20);
   float _idris_t22 = max(1e-5, _idris_t21);
   bool _idris_t23 = (u_disc_radius < 0.0);
-  bool _idris_t24 = (1e-5 > u_disc_radius);
-  float _idris_t25 = (_idris_t24 ? 1e-5 : u_disc_radius);
-  bool _idris_t26 = (1e-5 > _idris_t22);
-  float _idris_t27 = (_idris_t26 ? 1e-5 : _idris_t22);
-  bool _idris_t28 = (_idris_t25 < _idris_t27);
-  float _idris_t29 = (_idris_t28 ? _idris_t25 : _idris_t27);
-  float _idris_t30 = (u_disc_radius - _idris_t29);
-  float _idris_t31 = (_idris_t16 - _idris_t30);
-  float _idris_t32 = (_idris_t31 / _idris_t29);
-  bool _idris_t33 = (_idris_t32 < 0.0);
-  bool _idris_t34 = (_idris_t32 > 1.0);
-  float _idris_t35 = (_idris_t34 ? 1.0 : _idris_t32);
-  float _idris_t36 = (_idris_t33 ? 0.0 : _idris_t35);
-  float _idris_t37 = (_idris_t23 ? 0.0 : _idris_t36);
+  float _idris_t37;
+  if (_idris_t23) {
+    _idris_t37 = 0.0;
+  } else {
+    bool _idris_t24 = (1e-5 > u_disc_radius);
+    float _idris_t25 = (_idris_t24 ? 1e-5 : u_disc_radius);
+    bool _idris_t26 = (1e-5 > _idris_t22);
+    float _idris_t27 = (_idris_t26 ? 1e-5 : _idris_t22);
+    bool _idris_t28 = (_idris_t25 < _idris_t27);
+    float _idris_t29 = (_idris_t28 ? _idris_t25 : _idris_t27);
+    float _idris_t30 = (u_disc_radius - _idris_t29);
+    float _idris_t31 = (_idris_t16 - _idris_t30);
+    float _idris_t32 = (_idris_t31 / _idris_t29);
+    bool _idris_t33 = (_idris_t32 < 0.0);
+    bool _idris_t34 = (_idris_t32 > 1.0);
+    float _idris_t35 = (_idris_t34 ? 1.0 : _idris_t32);
+    float _idris_t36 = (_idris_t33 ? 0.0 : _idris_t35);
+    _idris_t37 = _idris_t36;
+  }
   float _idris_t39 = (_idris_t1 + 1.0);
   float _idris_t40 = (0.5 * _idris_t39);
   float _idris_t41 = u_resolution.x;

@@ -204,7 +204,13 @@ def main() -> int:
         for declaration in required_interface:
             require(declaration in reveal_source, "disc reveal interface lost " + declaration)
         require("sin(" in reveal_source, "dark-gray reveal texture was not emitted")
-        require(" ? 0.0 : " in reveal_source, "negative-radius no-mask sentinel was not emitted")
+        sentinel_if = reveal_source.find("  if (_idris_t23) {")
+        safe_radius = reveal_source.find("bool _idris_t24")
+        require(sentinel_if >= 0, "negative-radius no-mask sentinel did not become real control flow")
+        require(
+            safe_radius > sentinel_if,
+            "negative-radius sentinel still evaluated the guarded radius work eagerly",
+        )
         require(reveal_source == expected_reveal, "disc reveal shader differs from expected output")
         require(reveal_ir == expected_reveal_ir, "disc reveal IR differs from expected output")
 
