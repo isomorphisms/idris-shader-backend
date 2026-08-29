@@ -8,7 +8,7 @@ From a clean checkout of the PR branch with one Android device connected over AD
 make powervr-phone-accept
 ```
 
-The host needs the normal Idris 2/backend build prerequisites, `adb`, and an Android NDK. `ANDROID_NDK_HOME` or `ANDROID_NDK_ROOT` may point directly at the NDK; otherwise the script uses the newest NDK below `ANDROID_SDK_ROOT/ndk` or `ANDROID_HOME/ndk`. `ANDROID_SERIAL` selects a device when more than one is connected.
+The host needs the normal Idris 2/backend build prerequisites, `adb`, and an Android NDK. `IDRIS2` may select the Idris 2 executable. `ANDROID_NDK_HOME` or `ANDROID_NDK_ROOT` may point directly at the NDK; otherwise the script uses an installed NDK below `ANDROID_SDK_ROOT/ndk` or `ANDROID_HOME/ndk`. `ANDROID_SERIAL` selects a device when more than one is connected.
 
 A short preflight avoids losing time to the common setup failures:
 
@@ -23,15 +23,15 @@ The intended phone reports `armeabi-v7a` in its ABI list. Authorize the host whe
 
 That one target:
 
-1. refuses a tracked dirty tree so the evidence names one exact commit;
-2. regenerates the six GLSL fragments and refuses the run if they differ from that commit;
+1. refuses tracked or untracked files so the evidence names one exact commit;
+2. cleans and rebuilds the backend, regenerates the six tracked GLSL fragments, and refuses the run if they differ from that commit;
 3. reads the phone ABI and cross-compiles only `tools/powervr_primitives.c` with the NDK;
 4. pushes the runner and six fragments to `/data/local/tmp`;
 5. executes the existing framebuffer/readback and timing harness on the phone;
-6. requires a non-empty `GL_RENDERER`, PowerVR/Imagination identification, exactly six shader compile/link `PASS` lines, and exactly six framebuffer `PASS` lines;
+6. requires complete EGL/GLES identity, PowerVR/Imagination identification, exactly six shader compile/link `PASS` lines, exactly the six named framebuffer `PASS` lines, and the complete timing block;
 7. writes the complete evidence record to `artifacts/powervr-phone-acceptance.txt` and removes the temporary phone directory.
 
-The evidence record intentionally includes the source commit, confirmation that regenerated GLSL matches that commit, a non-unique device description, Android version/API/ABI, runner exit status, EGL/GLES/GLSL strings, `GL_VENDOR`, `GL_RENDERER`, six explicit shader compile/link verdicts, all six framebuffer readback verdicts, and the 4096-draw wall-time comparison. It does not record the ADB serial or Android build fingerprint.
+The evidence record intentionally includes the source commit, confirmation that regenerated GLSL matches that commit, the Idris 2 version, a non-unique device description, Android version/API/ABI, runner exit status, EGL/GLES/GLSL strings, `GL_VENDOR`, `GL_RENDERER`, six explicit shader compile/link verdicts, all six framebuffer readback verdicts, and the 4096-draw wall-time comparison. It does not record the ADB serial or Android build fingerprint.
 
 The framebuffer lines are acceptance results from `glReadPixels`, not screenshots. The timing numbers include driver submission and GPU completion exactly as the native harness reports them; they are not USC cycle counts.
 
