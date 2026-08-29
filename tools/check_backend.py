@@ -21,8 +21,13 @@ def compile_source(
     output_name: str,
     *,
     dump_ir: Path | None = None,
+    float_precision: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    directive = [] if dump_ir is None else ["--directive", f"dump-ir={dump_ir}"]
+    directives: list[str] = []
+    if dump_ir is not None:
+        directives.extend(["--directive", f"dump-ir={dump_ir}"])
+    if float_precision is not None:
+        directives.extend(["--directive", f"float-precision={float_precision}"])
     return subprocess.run(
         [
             str(BACKEND),
@@ -32,7 +37,7 @@ def compile_source(
             "src",
             "--output-dir",
             str(output_dir),
-            *directive,
+            *directives,
             source,
             "-o",
             output_name,
@@ -96,7 +101,7 @@ def main() -> int:
         require("_idris_t" in dumped and "return " in dumped, "typed IR dump is incomplete")
         require(dumped == expected_ir, "typed IR dump differs from expected output")
         require(actual.count("sin(u_time)") == 1, "ANF CSE did not merge repeated sin(u_time)")
-        require(" ? " in actual, "Idris conditional was not lowered to GLSL")
+        require(" ? " in actual, "cheap Idris conditional stopped lowering to a GLSL select")
         require("dot(" in actual, "dimension-polymorphic dot product was not lowered")
         require(
             "square" not in actual and "safeNormalize" not in actual,
@@ -112,6 +117,65 @@ def main() -> int:
                 )
             )
             raise AssertionError("compiler shader differs from expected output:\n" + difference)
+
+        medium = compile_source(
+            "src/Example/CompilerSphere.idr",
+            temporary,
+            "compiler-sphere-medium",
+            float_precision="mediump",
+        )
+        require(medium.returncode == 0, "mediump shader failed:\n" + medium.stdout)
+        medium_path = temporary / "compiler-sphere-medium.frag"
+        require(medium_path.is_file(), "mediump backend did not write a fragment shader")
+        medium_source = medium_path.read_text()
+        require(
+            "precision mediump float;" in medium_source,
+            "mediump directive did not reach emitted GLSL",
+        )
+        require(
+            "precision highp float;" not in medium_source,
+            "mediump shader retained the highp floating-point default",
+        )
+        validate_fragment(medium_path)
+
+        bad_precision = compile_source(
+            "src/Example/CompilerSphere.idr",
+            temporary,
+            "compiler-sphere-bad-precision",
+            float_precision="half",
+        )
+        require(
+            "float-precision must be highp or mediump" in bad_precision.stdout,
+            "invalid precision directive was not rejected:\n" + bad_precision.stdout,
+        )
+        require(
+            not (temporary / "compiler-sphere-bad-precision.frag").exists(),
+            "invalid precision directive still wrote a shader",
+        )
+
+        structured = compile_source(
+            "src/Example/StructuredBranch.idr",
+            temporary,
+            "structured-branch",
+        )
+        require(structured.returncode == 0, "structured branch shader failed:\n" + structured.stdout)
+        structured_path = temporary / "structured-branch.frag"
+        require(structured_path.is_file(), "structured branch shader was not written")
+        structured_source = structured_path.read_text()
+        branch_position = structured_source.find("  if (")
+        sqrt_position = structured_source.find("sqrt(")
+        sin_position = structured_source.find("sin(")
+        require(branch_position >= 0, "expensive conditional was not emitted as structured control flow")
+        require("  } else {" in structured_source, "structured conditional lost its else branch")
+        require(
+            sqrt_position > branch_position and sin_position > branch_position,
+            "expensive branch work was still evaluated before the GLSL if",
+        )
+        require(
+            " ? " not in structured_source,
+            "expensive conditional remained an eager ternary select",
+        )
+        validate_fragment(structured_path)
 
         reveal_ir_dump = temporary / "disc-reveal.ir"
         reveal = compile_source(
@@ -140,7 +204,13 @@ def main() -> int:
         for declaration in required_interface:
             require(declaration in reveal_source, "disc reveal interface lost " + declaration)
         require("sin(" in reveal_source, "dark-gray reveal texture was not emitted")
-        require(" ? 0.0 : " in reveal_source, "negative-radius no-mask sentinel was not emitted")
+        sentinel_if = reveal_source.find("  if (_idris_t23) {")
+        safe_radius = reveal_source.find("bool _idris_t24")
+        require(sentinel_if >= 0, "negative-radius no-mask sentinel did not become real control flow")
+        require(
+            safe_radius > sentinel_if,
+            "negative-radius sentinel still evaluated the guarded radius work eagerly",
+        )
         require(reveal_source == expected_reveal, "disc reveal shader differs from expected output")
         require(reveal_ir == expected_reveal_ir, "disc reveal IR differs from expected output")
 
@@ -220,8 +290,9 @@ def main() -> int:
         )
 
     print(
-        "backend checks passed: source lowering, expected outputs, phase portrait math, "
-        "fixed uniform arrays, four rejections, dimension proof"
+        "backend checks passed: source lowering, expected outputs, explicit precision, "
+        "structured expensive branches, phase portrait math, fixed uniform arrays, "
+        "four rejections, dimension proof"
     )
     return 0
 

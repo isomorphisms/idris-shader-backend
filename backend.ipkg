@@ -7,9 +7,9 @@ depends = idris2, network
 
 opts = "--inc chez"
 
-modules = Backend.GLSLES.IR, Backend.GLSLES.Interface, Backend.GLSLES.Signature,
-          Backend.GLSLES.Lower, Backend.GLSLES.Emit, Backend.GLSLES.Codegen,
-          Backend.GLSLES.Main
+modules = Backend.GLSLES.IR, Backend.GLSLES.Structure, Backend.GLSLES.Interface,
+          Backend.GLSLES.Signature, Backend.GLSLES.Lower, Backend.GLSLES.Emit,
+          Backend.GLSLES.Codegen, Backend.GLSLES.Main
 
 main = Backend.GLSLES.Main
 executable = idris2-glsles

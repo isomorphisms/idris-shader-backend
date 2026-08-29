@@ -1,11 +1,19 @@
 module Backend.GLSLES.Emit
 
 import Backend.GLSLES.IR
+import Backend.GLSLES.Structure
 import Data.Fin
 import Data.List
 import Data.String
 
 %default total
+
+public export
+data FloatPrecision = FloatHigh | FloatMedium
+
+precisionText : FloatPrecision -> String
+precisionText FloatHigh = "highp"
+precisionText FloatMedium = "mediump"
 
 arrayElementType : ArrayElementTy -> Either String String
 arrayElementType AFloat = Right "float"
@@ -39,6 +47,9 @@ floatLiteral value =
 
 Aliases : Type
 Aliases = List (String, String)
+
+Cache : Type
+Cache = List (String, String)
 
 resolveAlias : Aliases -> String -> String
 resolveAlias [] name = name
@@ -166,7 +177,8 @@ dumpBinding (MkBinding ty name rhs) = do
   rendered <- glslType ty
   Right (name ++ " : " ++ rendered ++ " = " ++ rhsText [] rhs)
 
-||| A stable, human-readable dump of the typed IR immediately before GLSL CSE.
+||| A stable, human-readable dump of the typed IR immediately before GLSL CSE
+||| and structured-control-flow recovery.
 public export
 dumpFragmentIR : FragmentProgram -> Either String String
 dumpFragmentIR program = do
@@ -181,35 +193,87 @@ identityAlias aliases (RSelect condition (OBool True) (OBool False)) =
   Just (operandText aliases condition)
 identityAlias _ _ = Nothing
 
-emitBindings : List Binding -> Aliases -> List (String, String) -> List String ->
-               Either String (Aliases, List String)
-emitBindings [] aliases _ reversedLines = Right (aliases, reverse reversedLines)
-emitBindings (MkBinding ty name rhs :: rest) aliases cache reversedLines =
+emitBindingsAt : String -> List Binding -> Aliases -> Cache -> List String ->
+                 Either String (Aliases, List String)
+emitBindingsAt _ [] aliases _ reversedLines = Right (aliases, reverse reversedLines)
+emitBindingsAt indent (MkBinding ty name rhs :: rest) aliases cache reversedLines =
   case identityAlias aliases rhs of
-    Just existing => emitBindings rest ((name, existing) :: aliases) cache reversedLines
+    Just existing => emitBindingsAt indent rest ((name, existing) :: aliases) cache reversedLines
     Nothing => do
       renderedTy <- glslType ty
       let renderedRhs = rhsText aliases rhs
           key = renderedTy ++ ":" ++ renderedRhs
       case lookup key cache of
         Just existing =>
-          emitBindings rest ((name, existing) :: aliases) cache reversedLines
+          emitBindingsAt indent rest ((name, existing) :: aliases) cache reversedLines
         Nothing =>
-          let line = "  " ++ renderedTy ++ " " ++ name ++ " = " ++ renderedRhs ++ ";"
-           in emitBindings rest ((name, name) :: aliases)
-                                ((key, name) :: cache) (line :: reversedLines)
+          let line = indent ++ renderedTy ++ " " ++ name ++ " = " ++ renderedRhs ++ ";"
+           in emitBindingsAt indent rest ((name, name) :: aliases)
+                                          ((key, name) :: cache) (line :: reversedLines)
 
-||| Emit deterministic GLSL ES 3.00. Repeated pure ANF right-hand sides are
-||| coalesced while preserving the readable temporary-based form.
+mutual
+  emitStatementBinding : Binding -> List Statement -> Aliases -> Cache -> List String ->
+                         Either String (Aliases, List String)
+  emitStatementBinding (MkBinding ty name rhs) rest aliases cache reversedLines =
+    case identityAlias aliases rhs of
+      Just existing => emitStatements rest ((name, existing) :: aliases) cache reversedLines
+      Nothing => do
+        renderedTy <- glslType ty
+        let renderedRhs = rhsText aliases rhs
+            key = renderedTy ++ ":" ++ renderedRhs
+        case lookup key cache of
+          Just existing => emitStatements rest ((name, existing) :: aliases) cache reversedLines
+          Nothing =>
+            let line = "  " ++ renderedTy ++ " " ++ name ++ " = " ++ renderedRhs ++ ";"
+             in emitStatements rest ((name, name) :: aliases)
+                                    ((key, name) :: cache) (line :: reversedLines)
+
+  emitStructuredIf : StructuredIf -> List Statement -> Aliases -> Cache -> List String ->
+                     Either String (Aliases, List String)
+  emitStructuredIf branch rest aliases cache reversedLines = do
+    renderedTy <- glslType (branchResultTy branch)
+    (thenAliases, thenLines) <-
+      emitBindingsAt "    " (thenBindings branch) aliases cache []
+    (elseAliases, elseLines) <-
+      emitBindingsAt "    " (elseBindings branch) aliases cache []
+    let name = branchName branch
+        condition = operandText aliases (branchCondition branch)
+        thenValue = operandText thenAliases (thenResult branch)
+        elseValue = operandText elseAliases (elseResult branch)
+        block =
+          [ "  " ++ renderedTy ++ " " ++ name ++ ";"
+          , "  if (" ++ condition ++ ") {"
+          ] ++ thenLines ++
+          [ "    " ++ name ++ " = " ++ thenValue ++ ";"
+          , "  } else {"
+          ] ++ elseLines ++
+          [ "    " ++ name ++ " = " ++ elseValue ++ ";"
+          , "  }"
+          ]
+    emitStatements rest ((name, name) :: aliases) cache
+                   (reverse block ++ reversedLines)
+
+  emitStatements : List Statement -> Aliases -> Cache -> List String ->
+                   Either String (Aliases, List String)
+  emitStatements [] aliases _ reversedLines = Right (aliases, reverse reversedLines)
+  emitStatements (SBinding binding :: rest) aliases cache reversedLines =
+    emitStatementBinding binding rest aliases cache reversedLines
+  emitStatements (SIf branch :: rest) aliases cache reversedLines =
+    emitStructuredIf branch rest aliases cache reversedLines
+
+||| Emit deterministic GLSL ES 3.00 with an explicit default floating-point
+||| precision. Expensive, branch-local pure computations are recovered into
+||| structured GLSL control flow; cheap selects stay as ternary expressions.
 public export
-emitFragment : FragmentProgram -> Either String String
-emitFragment program = do
+emitFragmentWithPrecision : FloatPrecision -> FragmentProgram -> Either String String
+emitFragmentWithPrecision precision program = do
   declarations <- traverse declaration (entryInterface (spec program))
-  (aliases, body) <- emitBindings (bindings program) [] [] []
+  let statements = structureBindings (bindings program)
+  (aliases, body) <- emitStatements statements [] [] []
   let output = operandText aliases (result program)
       source =
         [ "#version 300 es"
-        , "precision highp float;"
+        , "precision " ++ precisionText precision ++ " float;"
         , "precision highp int;"
         , ""
         ] ++ declarations ++
@@ -222,3 +286,9 @@ emitFragment program = do
         , ""
         ]
   Right (unlines source)
+
+||| Emit deterministic GLSL ES 3.00. High precision remains the compatibility
+||| default; target-specific callers must opt into narrower arithmetic explicitly.
+public export
+emitFragment : FragmentProgram -> Either String String
+emitFragment = emitFragmentWithPrecision FloatHigh
