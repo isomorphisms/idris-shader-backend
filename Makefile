@@ -3,6 +3,7 @@ IDRIS2_GLSLES ?= ./build/exec/idris2-glsles
 CC ?= cc
 EGL_LIBS ?= -lEGL
 GLES_LIBS ?= -lGLESv3
+POWERVR_OUTPUT_DIR ?= generated
 
 .PHONY: build backend generate generate-compiler test backend-test check clean \
 	powervr-primitives powervr-primitives-frag powervr-primitives-host \
@@ -29,19 +30,19 @@ generate-compiler: backend
 		src/Example/DiscReveal.idr -o disc-reveal
 
 powervr-primitives-frag: backend
-	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir $(POWERVR_OUTPUT_DIR) \
 		src/Example/SetPixel3RGB5239182.idr -o set-pixel-3-rgb-52-39-182
-	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir $(POWERVR_OUTPUT_DIR) \
 		src/Example/SetBlock32x32RGB5239182.idr -o set-block-32x32-rgb-52-39-182
-	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir $(POWERVR_OUTPUT_DIR) \
 		src/Example/DotVector4Covector4.idr -o dot-vector4-covector4
-	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir $(POWERVR_OUTPUT_DIR) \
 		src/Example/DotVector32Covector32.idr -o dot-vector32-covector32
-	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir $(POWERVR_OUTPUT_DIR) \
 		src/Example/SubtractVector8Norm.idr -o subtract-vector8-norm
-	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir $(POWERVR_OUTPUT_DIR) \
 		src/Example/RotateDifference8ToE1.idr -o rotate-difference8-to-e1
-	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir generated \
+	$(IDRIS2_GLSLES) --cg glsles --source-dir src --output-dir $(POWERVR_OUTPUT_DIR) \
 		src/Example/GivensRotate2ToE1.idr -o givens-rotate2-to-e1
 
 powervr-primitives-host:
