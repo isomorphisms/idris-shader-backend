@@ -38,6 +38,8 @@ def compile_probe(module: str, output_name: str, output_dir: Path) -> str:
                 str(BACKEND),
                 "--cg",
                 "glsles",
+                "--directive",
+                "explain-short-names=true",
                 "--source-dir",
                 "src",
                 "--output-dir",
@@ -88,13 +90,22 @@ def main() -> int:
             shaders[output_name] = compile_probe(module, output_name, output_dir)
             validate_link(output_dir / f"{output_name}.frag")
 
+        for output_name, shader in shaders.items():
+            require(
+                shader.startswith("#version 300 es\n// Reading guide:"),
+                output_name + " did not keep #version before the teaching comments",
+            )
+
         pixel = shaders["set-pixel-3-rgb-52-39-182"]
         require("in vec2 v_ndc;" in pixel, "pixel-3 probe lost its pixel-position input")
         require("> 0.5" in pixel, "pixel-3 probe lost fourth-pixel selection")
         require(pixel.count("255.0") >= 3, "pixel-3 probe lost byte-to-float RGB conversion")
 
         block = shaders["set-block-32x32-rgb-52-39-182"]
-        require("uniform " not in block, "block fill unexpectedly acquired uniforms")
+        require(
+            not any(line.startswith("uniform ") for line in block.splitlines()),
+            "block fill unexpectedly acquired uniforms",
+        )
         require(block.count("255.0") >= 3, "block fill lost byte-to-float RGB conversion")
 
         dot4 = shaders["dot-vector4-covector4"]
