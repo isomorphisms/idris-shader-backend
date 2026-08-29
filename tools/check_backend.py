@@ -101,7 +101,7 @@ def main() -> int:
         require("_idris_t" in dumped and "return " in dumped, "typed IR dump is incomplete")
         require(dumped == expected_ir, "typed IR dump differs from expected output")
         require(actual.count("sin(u_time)") == 1, "ANF CSE did not merge repeated sin(u_time)")
-        require(" ? " in actual, "Idris conditional was not lowered to GLSL")
+        require(" ? " in actual, "cheap Idris conditional stopped lowering to a GLSL select")
         require("dot(" in actual, "dimension-polymorphic dot product was not lowered")
         require(
             "square" not in actual and "safeNormalize" not in actual,
@@ -152,6 +152,30 @@ def main() -> int:
             not (temporary / "compiler-sphere-bad-precision.frag").exists(),
             "invalid precision directive still wrote a shader",
         )
+
+        structured = compile_source(
+            "src/Example/StructuredBranch.idr",
+            temporary,
+            "structured-branch",
+        )
+        require(structured.returncode == 0, "structured branch shader failed:\n" + structured.stdout)
+        structured_path = temporary / "structured-branch.frag"
+        require(structured_path.is_file(), "structured branch shader was not written")
+        structured_source = structured_path.read_text()
+        branch_position = structured_source.find("  if (")
+        sqrt_position = structured_source.find("sqrt(")
+        sin_position = structured_source.find("sin(")
+        require(branch_position >= 0, "expensive conditional was not emitted as structured control flow")
+        require("  } else {" in structured_source, "structured conditional lost its else branch")
+        require(
+            sqrt_position > branch_position and sin_position > branch_position,
+            "expensive branch work was still evaluated before the GLSL if",
+        )
+        require(
+            " ? " not in structured_source,
+            "expensive conditional remained an eager ternary select",
+        )
+        validate_fragment(structured_path)
 
         reveal_ir_dump = temporary / "disc-reveal.ir"
         reveal = compile_source(
@@ -261,7 +285,8 @@ def main() -> int:
 
     print(
         "backend checks passed: source lowering, expected outputs, explicit precision, "
-        "phase portrait math, fixed uniform arrays, four rejections, dimension proof"
+        "structured expensive branches, phase portrait math, fixed uniform arrays, "
+        "four rejections, dimension proof"
     )
     return 0
 
