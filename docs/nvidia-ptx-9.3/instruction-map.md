@@ -1,12 +1,12 @@
 # NVIDIA PTX 9.3 instruction map
 
-This is the complete **reserved PTX instruction-keyword inventory** from NVIDIA PTX ISA 9.3, grouped by compiler-relevant meaning and annotated for backend work.
+This is the complete **compiler-facing PTX 9.3 base instruction-family inventory**: the 136 reserved instruction keywords in PTX Table 2 plus the `fabric.*` family added in PTX 9.3, grouped by compiler-relevant meaning and annotated for backend work.
 
 ## Scope and honesty boundary
 
-PTX is NVIDIA's public, compiler-facing virtual ISA. PTX is translated by NVIDIA's toolchain/driver to the GPU's native hardware instruction set. This document therefore inventories every documented PTX instruction keyword, not every proprietary SASS encoding. NVIDIA does not publish a complete stable SASS ISA/encoding manual for Hopper or Blackwell, so an alleged exhaustive native H100/B200 instruction manual would be invented.
+PTX is NVIDIA's public, compiler-facing virtual ISA. PTX is translated by NVIDIA's toolchain/driver to the GPU's native hardware instruction set. This document therefore inventories every documented PTX base instruction family, not every proprietary SASS encoding. NVIDIA does not publish a complete stable SASS ISA/encoding manual for Hopper or Blackwell, so an alleged exhaustive native H100/B200 instruction manual would be invented.
 
-A keyword can name a large family. In particular `cp`, `multimem`, `mbarrier`, `tensormap`, `tcgen05`, `wgmma`, and related families have important dotted suboperations and modifiers. The PTX 9.3 specification remains the row-level oracle for legal forms, operand types, modifiers, minimum targets, and memory semantics. The comments here are a compiler map: what the operation means and why we might care.
+A keyword can name a large family. In particular `cp`, `fabric`, `multimem`, `mbarrier`, `tensormap`, `tcgen05`, `wgmma`, and related families have important dotted suboperations and modifiers. The PTX 9.3 specification remains the row-level oracle for legal forms, operand types, modifiers, minimum targets, and memory semantics. The comments here are a compiler map: what the operation means and why we might care.
 
 For Idriç lowering, never select an instruction merely because it exists. Preserve the typed/semantic operation first, then choose the PTX form using target capability, divergence, memory-space knowledge, alignment, precision requirements, and measured cost.
 
@@ -112,6 +112,7 @@ For Idriç lowering, never select an instruction merely because it exists. Prese
 - **`createpolicy`** — Build a cache-policy object/value used by memory operations.
 - **`cp`** — Prefix for asynchronous copy families, including `cp.async` and bulk/TMA-oriented copies; treat the subopcode as the real operation.
 - **`multimem`** — Prefix for operations on multicast/multimem addresses; includes loads, reductions, stores, and asynchronous copies on supporting targets.
+- **`fabric`** — PTX 9.3 fabric-handle family (`try_get`, `try_put`, `try_red`, `try_pullred`, `submit`, `wait`) for asynchronous fabric operations; completion/reporting and fabric-proxy ordering are part of the contract.
 - **`tensormap`** — Tensor-map manipulation/query family for TMA descriptors; many forms are architecture/family gated.
 - **`mapa`** — Map a shared-memory address to the corresponding address in another CTA of the same cluster.
 - **`getctarank`** — Return the rank of the CTA owning a cluster-shared address.
@@ -184,7 +185,7 @@ Several PTX families map directly onto the branch and data-layout experiments we
 - `bra` versus `brx` gives a clean direct-branch versus indexed/jump-table bakeoff.
 - `activemask`, `vote`, `match`, `elect`, `shfl`, `fns`, and `redux` expose warp-wide information without first materializing a shared-memory data structure.
 - `lop3`, `prmt`, `bfe`, `bfi`, `bmsk`, `popc`, `clz`, `shf`, and packed dot-product operations are exactly the sort of old, already-solved bit tricks that can replace naïve branch trees or byte-at-a-time work when the semantics match.
-- `cp.async`/bulk/TMA, `mbarrier`, cluster shared-memory operations, and `multimem` matter when the limiting cost is getting biological records to the arithmetic rather than the arithmetic itself.
+- `cp.async`/bulk/TMA, `mbarrier`, cluster shared-memory operations, `multimem`, and `fabric` matter when the limiting cost is getting biological records to the arithmetic rather than the arithmetic itself.
 - Matrix/tensor instructions should not be forced onto string work. They belong only where the biological computation can honestly be reformulated as dense dot/matrix work and beats the scalar/bit-oriented alternatives.
 
 ## Sources pinned for this inventory
@@ -195,4 +196,4 @@ Several PTX families map directly onto the branch and data-layout experiments we
 - NVIDIA Blackwell Tuning Guide 13.3.
 - NVIDIA CUDA Compiler Driver documentation for `sm_90`, `sm_90a`, `sm_100`, `sm_100f`, and `sm_100a` target compatibility.
 
-The reserved-keyword list contains 136 unique PTX instruction keywords. A future generator should verify that count against the upstream PTX specification whenever the pinned PTX version changes.
+This pinned map contains **137 base instruction families**: the 136 reserved instruction keywords in the PTX table plus the separately documented `fabric.*` family introduced in PTX 9.3. A future generator should verify both the reserved-keyword table and instruction-set contents whenever the pinned PTX version changes.
