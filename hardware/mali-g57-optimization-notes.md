@@ -50,6 +50,8 @@ For each select it follows the typed local-dependency chains of the two results,
 
 A separate structured-branch fixture verifies that expensive `sqrt`/`sin` work occurs after the `if`, while the existing compiler-sphere fixture verifies that cheap conditionals remain ternary selects.
 
+The present recovery implementation uses simple list searches and is deliberately capped at 256 bindings. Larger shader bodies remain in the existing linear select form rather than paying pathological compiler time. Removing that cap requires a linear-time liveness/use analysis or preserving structured cases earlier in lowering; do not simply raise the number.
+
 The present cost weights are deliberately small and inspectable rather than a claim about exact Mali cycle counts. Tune them only after examining generated code or measurements from the Mali toolchain/tablet.
 
 ## Highest-confidence next passes
