@@ -200,8 +200,22 @@ structure reversedStatements (binding :: rest) =
     Nothing => structure (SBinding binding :: reversedStatements) rest
     Just (remaining, statement) => structure (statement :: remaining) rest
 
+structureAnalysisLimit : Nat
+structureAnalysisLimit = 256
+
+plainStatements : List Binding -> List Statement
+plainStatements = map SBinding
+
 ||| Recover only control flow that is both safe to move and expensive enough
 ||| to justify a real branch. Cheap selects remain ordinary RSelect bindings.
+|||
+||| The first recovery implementation deliberately analyzes only small shader
+||| bodies. Its list-based dependency searches are not allowed to make large
+||| shaders compile pathologically; larger bodies stay in the original linear
+||| form until this pass is replaced by a linear-time liveness/use analysis.
 public export
 structureBindings : List Binding -> List Statement
-structureBindings = structure []
+structureBindings bindings =
+  if length bindings <= structureAnalysisLimit
+     then structure [] bindings
+     else plainStatements bindings
