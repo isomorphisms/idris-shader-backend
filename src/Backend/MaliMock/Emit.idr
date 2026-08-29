@@ -2,6 +2,7 @@ module Backend.MaliMock.Emit
 
 import Backend.GLSLES.IR
 import Data.Fin
+import Data.String
 
 %default total
 
