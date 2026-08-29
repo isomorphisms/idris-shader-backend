@@ -56,6 +56,18 @@ rhsLocals (RSelect condition whenTrue whenFalse) =
 bindingLocals : Binding -> List String
 bindingLocals (MkBinding _ _ rhs) = rhsLocals rhs
 
+structuredLocals : StructuredIf -> List String
+structuredLocals branch =
+  operandLocals (branchCondition branch) ++
+  concatMap bindingLocals (thenBindings branch) ++
+  operandLocals (thenResult branch) ++
+  concatMap bindingLocals (elseBindings branch) ++
+  operandLocals (elseResult branch)
+
+statementLocals : Statement -> List String
+statementLocals (SBinding binding) = bindingLocals binding
+statementLocals (SIf branch) = structuredLocals branch
+
 unique : List String -> List String
 unique [] = []
 unique (value :: rest) =
@@ -121,6 +133,11 @@ usesAny : List String -> List String -> Bool
 usesAny [] _ = False
 usesAny (name :: rest) wanted = elem name wanted || usesAny rest wanted
 
+statementsUse : List String -> List Statement -> Bool
+statementsUse _ [] = False
+statementsUse names (statement :: rest) =
+  usesAny (statementLocals statement) names || statementsUse names rest
+
 futureUses : List String -> List Binding -> Bool
 futureUses _ [] = False
 futureUses names (binding :: rest) =
@@ -158,20 +175,22 @@ tryStructured reversedStatements
       thenExclusive = without thenDependencies shared
       elseExclusive = without elseDependencies shared
       claimed = unique (thenExclusive ++ elseExclusive)
+      remaining = removeNamed claimed reversedStatements
       thenBody = bindingsNamedInOrder reversedStatements thenExclusive
       elseBody = bindingsNamedInOrder reversedStatements elseExclusive
    in if claimed == []
          then Nothing
-         else if futureUses claimed future
+         else if statementsUse claimed remaining
                  then Nothing
-                 else if not (worthStructuring thenBody elseBody)
+                 else if futureUses claimed future
                          then Nothing
-                         else
-                           let remaining = removeNamed claimed reversedStatements
-                               structured = MkStructuredIf ty name condition
-                                                           thenBody whenTrue
-                                                           elseBody whenFalse
-                            in Just (remaining, SIf structured)
+                         else if not (worthStructuring thenBody elseBody)
+                                 then Nothing
+                                 else
+                                   let structured = MkStructuredIf ty name condition
+                                                                   thenBody whenTrue
+                                                                   elseBody whenFalse
+                                    in Just (remaining, SIf structured)
 tryStructured _ _ _ = Nothing
 
 structure : List Statement -> List Binding -> List Statement
