@@ -66,6 +66,10 @@ fragment-mock-test: fragment-mocks
 		$(IDRIS2_FRAGMENT_MOCKS) --cg $$target \
 			--source-dir src --output-dir /tmp/idris-fragment-mocks \
 			src/Example/WegertFragmentMocks.idr -o wegert || exit $$?; \
+		echo "Givens mock -> $$target"; \
+		$(IDRIS2_FRAGMENT_MOCKS) --cg $$target \
+			--source-dir src --output-dir /tmp/idris-fragment-mocks \
+			src/Example/GivensFragmentMocks.idr -o givens || exit $$?; \
 	done
 	python3 tools/check_fragment_mocks.py /tmp/idris-fragment-mocks
 
