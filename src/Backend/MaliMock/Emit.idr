@@ -116,7 +116,7 @@ emitMaliMock program =
         , "; Real path through checked shader IR/lowering; mocked final emission only"
         , ".stage fragment"
         ]
-      interface = map interfaceLine (entryInterface (spec program))
+      interfaceLines = map interfaceLine (entryInterface (spec program))
       body = map bindingLine (bindings program)
       output = "  store.frag_color " ++ operandText (result program)
-   in unlines (header ++ interface ++ [".begin"] ++ body ++ [output, ".end", ""])
+   in unlines (header ++ interfaceLines ++ [".begin"] ++ body ++ [output, ".end", ""])

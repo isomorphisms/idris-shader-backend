@@ -119,7 +119,7 @@ emitFragmentMock target program =
         , "; SHARED PSEUDO-ISA -- architecture-specific optimization deferred"
         , ".stage fragment"
         ]
-      interface = map interfaceLine (entryInterface (spec program))
+      interfaceLines = map interfaceLine (entryInterface (spec program))
       body = map bindingLine (bindings program)
       output = "  store.frag_color " ++ operandText (result program)
-   in unlines (header ++ interface ++ [".begin"] ++ body ++ [output, ".end", ""])
+   in unlines (header ++ interfaceLines ++ [".begin"] ++ body ++ [output, ".end", ""])
