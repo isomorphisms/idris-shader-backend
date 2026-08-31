@@ -3,7 +3,8 @@ version = 0.1.0
 
 sourcedir = "src"
 
-modules = Shader.Types, Shader.IR, Shader.Eval, Shader.Polynomial, Shader.GLSLES,
+modules = Backend.GLSLES.FloatSemantics,
+          Shader.Types, Shader.IR, Shader.Eval, Shader.Polynomial, Shader.GLSLES,
           Shader.DiscReveal, Example.Sphere, Test.Main
 
 main = Test.Main
