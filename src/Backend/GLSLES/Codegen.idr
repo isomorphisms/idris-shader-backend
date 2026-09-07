@@ -58,15 +58,30 @@ requireSingleShaderExport [entry] = pure entry
 requireSingleShaderExport entries =
   backendError ("expected one glsles export, received " ++ show (length entries))
 
-checkShaderInterface : Ref Ctxt Defs -> Name -> String -> Core EntrySpec
-checkShaderInterface defs entryName annotation = do
-  raw <- fromEither (parseRawEntry annotation)
-  signature <- entryType {c = defs} entryName
+record ExportedShader where
+  constructor MkExportedShader
+  shaderEntryName : Name
+  shaderExportAnnotation : String
+  shaderDefinitions : ShaderDefs
+
+prepareExportedShader : Ref Ctxt Defs -> ClosedTerm -> Core ExportedShader
+prepareExportedShader defs term = do
+  compilation <- getCompileDataWith {c = defs} ["glsles"] False ANF term
+  (resolvedName, annotation) <- requireSingleShaderExport (exported compilation)
+  entryName <- toFullNames resolvedName
+  pure (MkExportedShader entryName annotation (anf compilation))
+
+checkShaderInterface : Ref Ctxt Defs -> ExportedShader -> Core EntrySpec
+checkShaderInterface defs shader = do
+  raw <- fromEither (parseRawEntry (shaderExportAnnotation shader))
+  signature <- entryType {c = defs} (shaderEntryName shader)
   (argumentTypes, resultType) <- fromEither (shaderSignature signature)
   fromEither (makeEntrySpec raw argumentTypes resultType)
 
-lowerExportedShader : EntrySpec -> Name -> ShaderDefs -> Core FragmentProgram
-lowerExportedShader spec entryName definitions = do
+lowerExportedShader : EntrySpec -> ExportedShader -> Core FragmentProgram
+lowerExportedShader spec shader = do
+  let entryName = shaderEntryName shader
+  let definitions = shaderDefinitions shader
   Just definition <- pure (findANF entryName definitions)
     | Nothing => backendError ("could not find ANF for exported entry " ++ show entryName)
   fromEither (lowerFragment spec entryName definitions definition)
@@ -95,11 +110,9 @@ compileGLSLES :
   (tmpDir : String) -> (outputDir : String) ->
   ClosedTerm -> (outfile : String) -> Core (Maybe String)
 compileGLSLES defs syn tmpDir outputDir term outfile = do
-  compilation <- getCompileDataWith ["glsles"] False ANF term
-  (resolvedName, annotation) <- requireSingleShaderExport (exported compilation)
-  entryName <- toFullNames resolvedName
-  spec <- checkShaderInterface defs entryName annotation
-  program <- lowerExportedShader spec entryName (anf compilation)
+  shader <- prepareExportedShader defs term
+  spec <- checkShaderInterface defs shader
+  program <- lowerExportedShader spec shader
   writeRequestedIR defs program
   output <- writeFragmentOutput outputDir outfile program
   pure (Just output)
