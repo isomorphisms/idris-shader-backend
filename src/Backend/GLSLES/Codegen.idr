@@ -51,6 +51,43 @@ directiveValue needle (value :: rest) =
      then Just (pack (drop (length (unpack needle)) (unpack value)))
      else directiveValue needle rest
 
+requireSingleShaderExport : List (Name, String) -> Core (Name, String)
+requireSingleShaderExport [] =
+  backendError "no shader entry; add %export \"glsles:fragment|name=in,name=uniform\""
+requireSingleShaderExport [entry] = pure entry
+requireSingleShaderExport entries =
+  backendError ("expected one glsles export, received " ++ show (length entries))
+
+checkShaderInterface : Ref Ctxt Defs -> Name -> String -> Core EntrySpec
+checkShaderInterface defs entryName annotation = do
+  raw <- fromEither (parseRawEntry annotation)
+  signature <- entryType {c = defs} entryName
+  (argumentTypes, resultType) <- fromEither (shaderSignature signature)
+  fromEither (makeEntrySpec raw argumentTypes resultType)
+
+lowerExportedShader : EntrySpec -> Name -> ShaderDefs -> Core FragmentProgram
+lowerExportedShader spec entryName definitions = do
+  Just definition <- pure (findANF entryName definitions)
+    | Nothing => backendError ("could not find ANF for exported entry " ++ show entryName)
+  fromEither (lowerFragment spec entryName definitions definition)
+
+writeRequestedIR : Ref Ctxt Defs -> FragmentProgram -> Core ()
+writeRequestedIR defs program = do
+  session <- getSession {c = defs}
+  case directiveValue "dump-ir=" (directives session) of
+    Nothing => pure ()
+    Just "" => backendError "dump-ir directive requires a path"
+    Just path => do
+      renderedIR <- fromEither (dumpFragmentIR program)
+      writeShader path renderedIR
+
+writeFragmentOutput : String -> String -> FragmentProgram -> Core String
+writeFragmentOutput outputDir outfile program = do
+  source <- fromEither (emitFragment program)
+  let output = outputDir ++ "/" ++ outfile ++ ".frag"
+  writeShader output source
+  pure output
+
 public export
 compileGLSLES :
   Ref Ctxt Defs ->
@@ -58,29 +95,13 @@ compileGLSLES :
   (tmpDir : String) -> (outputDir : String) ->
   ClosedTerm -> (outfile : String) -> Core (Maybe String)
 compileGLSLES defs syn tmpDir outputDir term outfile = do
-  cdata <- getCompileDataWith ["glsles"] False ANF term
-  (resolvedName, annotation) <- case exported cdata of
-    [] => backendError "no shader entry; add %export \"glsles:fragment|name=in,name=uniform\""
-    [entry] => pure entry
-    entries => backendError ("expected one glsles export, received " ++ show (length entries))
+  compilation <- getCompileDataWith ["glsles"] False ANF term
+  (resolvedName, annotation) <- requireSingleShaderExport (exported compilation)
   entryName <- toFullNames resolvedName
-  raw <- fromEither (parseRawEntry annotation)
-  signature <- entryType entryName
-  (argumentTypes, resultType) <- fromEither (shaderSignature signature)
-  spec <- fromEither (makeEntrySpec raw argumentTypes resultType)
-  Just definition <- pure (findANF entryName (anf cdata))
-    | Nothing => backendError ("could not find ANF for exported entry " ++ show entryName)
-  program <- fromEither (lowerFragment spec entryName (anf cdata) definition)
-  session <- getSession
-  case directiveValue "dump-ir=" (directives session) of
-    Nothing => pure ()
-    Just "" => backendError "dump-ir directive requires a path"
-    Just path => do
-      renderedIR <- fromEither (dumpFragmentIR program)
-      writeShader path renderedIR
-  source <- fromEither (emitFragment program)
-  let output = outputDir ++ "/" ++ outfile ++ ".frag"
-  writeShader output source
+  spec <- checkShaderInterface defs entryName annotation
+  program <- lowerExportedShader spec entryName (anf compilation)
+  writeRequestedIR defs program
+  output <- writeFragmentOutput outputDir outfile program
   pure (Just output)
 
 public export
