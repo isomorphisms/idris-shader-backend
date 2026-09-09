@@ -54,10 +54,11 @@ directiveValue needle (value :: rest) =
 floatPrecision : List String -> Either String FloatPrecision
 floatPrecision values = case directiveValue "float-precision=" values of
   Nothing => Right FloatHigh
-  Just "highp" => Right FloatHigh
+  Just "lowp" => Right FloatLow
   Just "mediump" => Right FloatMedium
-  Just "" => Left "float-precision directive requires highp or mediump"
-  Just value => Left ("float-precision must be highp or mediump, received " ++ value)
+  Just "highp" => Right FloatHigh
+  Just "" => Left "float-precision directive requires lowp, mediump, or highp"
+  Just value => Left ("float-precision must be lowp, mediump, or highp, received " ++ value)
 
 public export
 compileGLSLES :
