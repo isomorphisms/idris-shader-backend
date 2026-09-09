@@ -165,9 +165,8 @@ bindingsCost : List Binding -> Nat
 bindingsCost [] = 0
 bindingsCost (binding :: rest) = bindingCost binding + bindingsCost rest
 
-worthStructuring : List Binding -> List Binding -> Bool
-worthStructuring thenBody elseBody =
-  bindingsCost thenBody + bindingsCost elseBody >= 4
+worthMoving : List Binding -> Bool
+worthMoving body = bindingsCost body >= 4
 
 tryStructured : List Statement -> Binding -> List Binding ->
                 Maybe (List Statement, Statement)
@@ -178,23 +177,30 @@ tryStructured reversedStatements
       shared = common thenDependencies elseDependencies
       thenExclusive = without thenDependencies shared
       elseExclusive = without elseDependencies shared
-      claimed = unique (thenExclusive ++ elseExclusive)
+      rawThenBody = bindingsNamedInOrder reversedStatements thenExclusive
+      rawElseBody = bindingsNamedInOrder reversedStatements elseExclusive
+      -- Only move a side when that side contains enough work to justify real
+      -- control flow. Cheap constants and aliases deliberately stay outside.
+      -- This is important for fixed-array folds: the common zero value is
+      -- reused by many later selects, while each active factor has its own
+      -- expensive atan/log dependency chain.
+      thenMoved = if worthMoving rawThenBody then thenExclusive else []
+      elseMoved = if worthMoving rawElseBody then elseExclusive else []
+      claimed = unique (thenMoved ++ elseMoved)
       remaining = removeNamed claimed reversedStatements
-      thenBody = bindingsNamedInOrder reversedStatements thenExclusive
-      elseBody = bindingsNamedInOrder reversedStatements elseExclusive
+      thenBody = bindingsNamedInOrder reversedStatements thenMoved
+      elseBody = bindingsNamedInOrder reversedStatements elseMoved
    in if claimed == []
          then Nothing
          else if statementsUse claimed remaining
                  then Nothing
                  else if futureUses claimed future
                          then Nothing
-                         else if not (worthStructuring thenBody elseBody)
-                                 then Nothing
-                                 else
-                                   let structured = MkStructuredIf ty name condition
-                                                                   thenBody whenTrue
-                                                                   elseBody whenFalse
-                                    in Just (remaining, SIf structured)
+                         else
+                           let structured = MkStructuredIf ty name condition
+                                                           thenBody whenTrue
+                                                           elseBody whenFalse
+                            in Just (remaining, SIf structured)
 tryStructured _ _ _ = Nothing
 
 structure : List Statement -> List Binding -> List Statement
