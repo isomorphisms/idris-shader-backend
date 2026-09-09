@@ -1,6 +1,7 @@
 module Backend.GLSLES.Codegen
 
 import Backend.GLSLES.Emit
+import Backend.GLSLES.FloatSemantics
 import Backend.GLSLES.Interface
 import Backend.GLSLES.IR
 import Backend.GLSLES.Lower
@@ -51,6 +52,15 @@ directiveValue needle (value :: rest) =
      then Just (pack (drop (length (unpack needle)) (unpack value)))
      else directiveValue needle rest
 
+floatPrecision : List String -> Either String ShaderPrecision
+floatPrecision values = case directiveValue "float-precision=" values of
+  Nothing => Right (shaderPrecision defaultFloatWidth)
+  Just "lowp" => Right Low
+  Just "mediump" => Right Medium
+  Just "highp" => Right High
+  Just "" => Left "float-precision directive requires lowp, mediump, or highp"
+  Just value => Left ("float-precision must be lowp, mediump, or highp, received " ++ value)
+
 public export
 compileGLSLES :
   Ref Ctxt Defs ->
@@ -78,7 +88,8 @@ compileGLSLES defs syn tmpDir outputDir term outfile = do
     Just path => do
       renderedIR <- fromEither (dumpFragmentIR program)
       writeShader path renderedIR
-  source <- fromEither (emitFragment program)
+  precision <- fromEither (floatPrecision (directives session))
+  source <- fromEither (emitFragmentWithPrecision precision program)
   let output = outputDir ++ "/" ++ outfile ++ ".frag"
   writeShader output source
   pure (Just output)
