@@ -51,6 +51,15 @@ directiveValue needle (value :: rest) =
      then Just (pack (drop (length (unpack needle)) (unpack value)))
      else directiveValue needle rest
 
+floatPrecision : List String -> Either String FloatPrecision
+floatPrecision values = case directiveValue "float-precision=" values of
+  Nothing => Right FloatHigh
+  Just "lowp" => Right FloatLow
+  Just "mediump" => Right FloatMedium
+  Just "highp" => Right FloatHigh
+  Just "" => Left "float-precision directive requires lowp, mediump, or highp"
+  Just value => Left ("float-precision must be lowp, mediump, or highp, received " ++ value)
+
 public export
 compileGLSLES :
   Ref Ctxt Defs ->
@@ -78,7 +87,8 @@ compileGLSLES defs syn tmpDir outputDir term outfile = do
     Just path => do
       renderedIR <- fromEither (dumpFragmentIR program)
       writeShader path renderedIR
-  source <- fromEither (emitFragment program)
+  precision <- fromEither (floatPrecision (directives session))
+  source <- fromEither (emitFragmentWithPrecision precision program)
   let output = outputDir ++ "/" ++ outfile ++ ".frag"
   writeShader output source
   pure (Just output)
