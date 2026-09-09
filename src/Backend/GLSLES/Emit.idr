@@ -9,11 +9,12 @@ import Data.String
 %default total
 
 public export
-data FloatPrecision = FloatHigh | FloatMedium
+data FloatPrecision = FloatLow | FloatMedium | FloatHigh
 
 precisionText : FloatPrecision -> String
-precisionText FloatHigh = "highp"
+precisionText FloatLow = "lowp"
 precisionText FloatMedium = "mediump"
+precisionText FloatHigh = "highp"
 
 arrayElementType : ArrayElementTy -> Either String String
 arrayElementType AFloat = Right "float"
@@ -287,8 +288,8 @@ emitFragmentWithPrecision precision program = do
         ]
   Right (unlines source)
 
-||| Emit deterministic GLSL ES 3.00. High precision remains the compatibility
-||| default; target-specific callers must opt into narrower arithmetic explicitly.
+||| High precision remains the compatibility default; callers can explicitly
+||| select lower precision when their rendering contract permits it.
 public export
 emitFragment : FragmentProgram -> Either String String
 emitFragment = emitFragmentWithPrecision FloatHigh
