@@ -147,6 +147,13 @@ futureUses _ [] = False
 futureUses names (binding :: rest) =
   usesAny (bindingLocals binding) names || futureUses names rest
 
+unusedOutside : List String -> List Statement -> List Binding -> List String
+unusedOutside [] _ _ = []
+unusedOutside (name :: rest) outside future =
+  if statementsUse [name] outside || futureUses [name] future
+     then unusedOutside rest outside future
+     else name :: unusedOutside rest outside future
+
 rhsCost : Rhs ty -> Nat
 rhsCost (RFloatUnary FSin _) = 4
 rhsCost (RFloatUnary FCos _) = 4
@@ -177,15 +184,19 @@ tryStructured reversedStatements
       shared = common thenDependencies elseDependencies
       thenExclusive = without thenDependencies shared
       elseExclusive = without elseDependencies shared
-      rawThenBody = bindingsNamedInOrder reversedStatements thenExclusive
-      rawElseBody = bindingsNamedInOrder reversedStatements elseExclusive
-      -- Only move a side when that side contains enough work to justify real
-      -- control flow. Cheap constants and aliases deliberately stay outside.
-      -- This is important for fixed-array folds: the common zero value is
-      -- reused by many later selects, while each active factor has its own
-      -- expensive atan/log dependency chain.
-      thenMoved = if worthMoving rawThenBody then thenExclusive else []
-      elseMoved = if worthMoving rawElseBody then elseExclusive else []
+      allExclusive = unique (thenExclusive ++ elseExclusive)
+      outsideExclusive = removeNamed allExclusive reversedStatements
+      -- Shared values such as the mathematical point can stay outside a
+      -- recovered branch even when the expensive branch-local chain depends on
+      -- them. Only dependency bindings with no use outside either branch are
+      -- candidates for motion. This lets a factor's atan/log chain move while
+      -- the point and reusable zero value remain available to later factors.
+      safeThen = unusedOutside thenExclusive outsideExclusive future
+      safeElse = unusedOutside elseExclusive outsideExclusive future
+      safeThenBody = bindingsNamedInOrder reversedStatements safeThen
+      safeElseBody = bindingsNamedInOrder reversedStatements safeElse
+      thenMoved = if worthMoving safeThenBody then safeThen else []
+      elseMoved = if worthMoving safeElseBody then safeElse else []
       claimed = unique (thenMoved ++ elseMoved)
       remaining = removeNamed claimed reversedStatements
       thenBody = bindingsNamedInOrder reversedStatements thenMoved
