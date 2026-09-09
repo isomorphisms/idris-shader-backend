@@ -24,6 +24,17 @@ jobs:
       - name: Check out source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
+      - name: Check out canonical complex/projective corpus
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          repository: isomorphisms/Idric
+          ref: math/complex-projective-semantics
+          path: .idric-complex
+          persist-credentials: false
+
+      - name: Record exact canonical semantic head
+        run: echo "IDRIC_COMPLEX_SEMANTICS_SHA=$(git -C .idric-complex rev-parse HEAD)" >> "$GITHUB_ENV"
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
