@@ -18,24 +18,27 @@ Show FloatWidth where
   show F16 = "F16"
   show F32 = "F32"
 
-||| GLSL ES precision class used by the current lowering.
-||| `Medium` is only a portable minimum-precision promise; a target profile
-||| such as verified PowerVR may additionally establish native FP16 execution.
+||| GLSL ES default precision class used at emission. Precision class is a
+||| target-language execution choice; it is not itself the mathematical type.
 public export
-data ShaderPrecision = Medium | High
+data ShaderPrecision = Low | Medium | High
 
 public export
 Eq ShaderPrecision where
+  Low == Low = True
   Medium == Medium = True
   High == High = True
   _ == _ = False
 
 public export
 Show ShaderPrecision where
+  show Low = "lowp"
   show Medium = "mediump"
   show High = "highp"
 
-||| Current GLES lowering policy. F32 is the existing production path.
+||| Current portable width-to-precision lowering. F16 maps to mediump because
+||| portable GLES does not promise binary16 semantics for lowp. A caller may
+||| explicitly request lowp when the rendering contract permits it.
 public export
 shaderPrecision : FloatWidth -> ShaderPrecision
 shaderPrecision F16 = Medium
@@ -44,6 +47,10 @@ shaderPrecision F32 = High
 public export
 precisionKeyword : FloatWidth -> String
 precisionKeyword width = show (shaderPrecision width)
+
+public export
+shaderPrecisionKeyword : ShaderPrecision -> String
+shaderPrecisionKeyword = show
 
 public export
 glslScalarType : FloatWidth -> String
