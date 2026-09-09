@@ -2,7 +2,7 @@
 
 Target branch: `target/mali-g57-mc1-valhall`
 
-These notes separate optimizations justified by the physical tablet from generic Valhall guidance and from guesses that still need measurement.
+These notes separate facts justified by the physical tablet from generic Valhall guidance and from performance claims that still require measurement.
 
 ## Verified on the tablet
 
@@ -18,9 +18,9 @@ The checked-in Vulkan profile reports:
 - accelerated signed and unsigned 8-bit integer dot products, including packed 4x8 forms;
 - no shader Float64.
 
-Those are compiler-visible facts for this target. They may be used as capability gates without guessing from the product name.
+Those are compiler-visible target facts. They do not by themselves prove performance.
 
-## Implemented: explicit narrow-float choice
+## Implemented: explicit shader precision
 
 The GLSL ES emitter used to hard-code:
 
@@ -28,53 +28,64 @@ The GLSL ES emitter used to hard-code:
 precision highp float;
 ```
 
-for every shader. The backend now accepts an explicit compiler directive:
+The backend now accepts:
 
 ```text
+--directive float-precision=lowp
 --directive float-precision=mediump
+--directive float-precision=highp
 ```
 
-and retains `highp` as the compatibility default.
+`highp` remains the compatibility default for this branch, but applications can request `lowp` directly. Precision choice is kept separate from the mathematical/type semantics: a GLSL precision qualifier is an execution/lowering choice, not the definition of a real or complex number.
 
-This is deliberately opt-in. The Vulkan profile proves native Float16 exists on this device, and Arm's Valhall guidance treats narrow FP16 arithmetic as a major throughput and register-pressure optimization, but the GLSL ES `mediump` contract is not being silently equated with exact IEEE binary16 semantics for every shader. A shader should only be narrowed when its numerical error budget permits it.
-
-The next precision step is to move the choice from a whole-shader directive into the typed shader IR so individual values can remain narrow or wide intentionally.
+For the current Analytic Continuation experiment, lowp is an intentional application choice. The important performance fix is control flow, not precision promotion.
 
 ## Implemented: keep expensive branch work behind real control flow
 
-The ANF lowering still represents an Idris boolean case as a typed `RSelect`, which is a useful simple semantic form. A structure-recovery pass before GLSL emission now distinguishes cheap selection from expensive branch-local work.
+ANF lowering still represents an Idris boolean case as a typed `RSelect`. Eager linear emission used to calculate branch-local work before selecting a result. That is especially bad for fragment operations such as `atan`, `log`, `sqrt`, and `pow`.
 
-For each select it follows the typed local-dependency chains of the two results, keeps shared or externally used values outside the branch, and estimates the cost of the work which is genuinely exclusive to each side. Cheap scalar choices stay readable GLSL ternaries. A sufficiently expensive pure branch becomes a real `if`/`else`, with its exclusive temporaries emitted inside the branch.
+The structure-recovery pass now follows both result dependency chains, separates shared from exclusive work, identifies values required by code outside the branch, protects the full dependency closure of those values, and moves only a closed branch-local subgraph. Cheap selections can remain ternaries; expensive pure work becomes real GLSL `if`/`else` control flow.
 
-`DiscReveal` is the first useful real case. For a negative disc radius the shader now tests the no-mask sentinel before computing world coordinates, distance, `sqrt`, boundary width, and clamp work. The later gray texture still needs `v_ndc` and resolution, so those inexpensive values are read again after the branch instead of forcing the expensive distance chain to remain live outside it.
+`DiscReveal` remains a small acceptance fixture. The more important large acceptance is the current Analytic Continuation typed core.
 
-A separate structured-branch fixture verifies that expensive `sqrt`/`sin` work occurs after the `if`, while the existing compiler-sphere fixture verifies that cheap conditionals remain ternary selects.
+### Large-fragment result
 
-The present recovery implementation uses simple list searches and is deliberately capped at 256 bindings. Larger shader bodies remain in the existing linear select form rather than paying pathological compiler time. Removing that cap requires a linear-time liveness/use analysis or preserving structured cases earlier in lowering; do not simply raise the number.
+The first structure-recovery prototype was capped at 256 bindings because repeated dependency searches became pathologically slow. That global cutoff has been removed. Dependency discovery now walks backwards over the already-emitted prefix.
 
-The present cost weights are deliberately small and inspectable rather than a claim about exact Mali cycle counts. Tune them only after examining generated code or measurements from the Mali toolchain/tablet.
+The current Analytic Continuation fixture contains 1,159 typed-IR lines. The generated Mali shader now contains:
+
+- 64 `atan` calls, all 64 inside recovered branches;
+- 64 `log` calls, all 64 inside recovered branches;
+- 68 real GLSL `if` blocks;
+- 0 ternary selects for this workload.
+
+The highp and lowp versions have the same control-flow structure. The cross-repository structured-backend probe run `34311467111` validates both versions, as well as the matching generic-backend versions.
+
+The present cost weights remain small, inspectable heuristics rather than claimed Mali cycle counts. Device measurement remains authoritative.
 
 ## Highest-confidence next passes
 
-### 1. Per-value Float16 / Float32 types
+### 1. Physical tablet timing
 
-Replace the single undifferentiated float type with a representation that carries precision intent through lowering. Keep widening explicit. Do not lower every `Double` to Float16 just because the target supports it.
-
-Useful first candidates for narrow arithmetic are final color formation, bounded interpolation weights, normalized local coordinates, and other values whose error budget is visibly much looser than the sensitive complex-analysis path.
+Run the improved lowp fragment on the Mali-G57 tablet and measure frame time and touch-to-visible-frame latency. The previous generated fragment's greater-than-one-second interaction delay is the practical regression to eliminate.
 
 ### 2. Register-pressure gate
 
-Arm's Mali Offline Compiler reports work-register use and stack spilling for Valhall. Add a target check that records these for representative generated shaders. Treat crossing a register-allocation/occupancy boundary or introducing spills as a regression even when static instruction count falls.
+Arm's Mali Offline Compiler reports work-register use and stack spilling for Valhall. Record these for representative generated shaders. Treat introduced spills or occupancy-boundary regressions as failures even when GLSL text becomes shorter.
 
-Do not encode a guessed register allocator model in Idriç. Let the target compiler remain authoritative and use its reported result as an oracle.
+Do not encode a guessed Mali register allocator in Idriç; use the target compiler as the oracle.
 
-### 3. Subgroup-aware compute shapes
+### 3. Preserve source structure earlier
 
-The device reports a fixed subgroup width of 16. Compute workgroup candidates should therefore be multiples of 16 and remain within the 512-invocation limit. Do not simply choose 512: compare sensible candidates such as 64, 128, and 256 against register use, shared-memory use, and occupancy.
+The current recovery pass repairs useful control flow after ANF flattening. A cleaner future path is to preserve bounded loops/cases earlier in lowering where that gives a smaller and more direct shader IR. Do not regress the current large-fragment acceptance while doing so.
 
-### 4. 8-bit dot-product path
+### 4. Subgroup-aware compute shapes
 
-Where a later workload genuinely has quantized integer dot products, prefer the device's reported accelerated 8-bit signed/unsigned and packed 4x8 forms. Do not route floating-point geometry through integer quantization merely to use this unit.
+The device reports fixed subgroup width 16. Compute workgroup candidates should be multiples of 16 and stay within the 512-invocation limit. Compare practical candidates rather than assuming the maximum is best.
+
+### 5. 8-bit dot-product path
+
+For later genuinely quantized workloads, use the reported accelerated signed/unsigned packed dot products. Do not quantize floating geometry merely to reach that unit.
 
 ## Public architecture references
 
@@ -82,4 +93,4 @@ Where a later workload genuinely has quantized integer dot products, prefer the 
 - Arm, *Mali Offline Compiler User Guide*, document 101863.
 - Arm, *Mali-G57 Performance Counters Reference Guide*, document 102659.
 
-The optimization contract for this branch remains: capability facts come from the physical device dump; architecture guidance can suggest transformations; performance claims require generated-shader inspection or measurement on the tablet.
+The optimization contract remains: capability facts come from the physical device dump; architecture guidance can suggest transformations; performance claims require generated-shader inspection or measurement on the tablet.
