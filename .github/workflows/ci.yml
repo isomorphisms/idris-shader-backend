@@ -14,6 +14,7 @@ concurrency:
 
 env:
   IDRIS2_VERSION: 0.8.0
+  SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
   idris-to-glsl:
@@ -59,3 +60,11 @@ jobs:
 
       - name: Reject uncommitted generated output
         run: git diff --exit-code -- generated
+
+      - name: Retain complex/projective follower evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: complex-projective-shader-follower
+          path: build/complex-projective-follower
+          if-no-files-found: warn
