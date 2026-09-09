@@ -118,6 +118,19 @@ def main() -> int:
             )
             raise AssertionError("compiler shader differs from expected output:\n" + difference)
 
+        low = compile_source(
+            "src/Example/CompilerSphere.idr",
+            temporary,
+            "compiler-sphere-low",
+            float_precision="lowp",
+        )
+        require(low.returncode == 0, "lowp shader failed:\n" + low.stdout)
+        low_path = temporary / "compiler-sphere-low.frag"
+        require(low_path.is_file(), "lowp backend did not write a fragment shader")
+        low_source = low_path.read_text()
+        require("precision lowp float;" in low_source, "lowp directive did not reach emitted GLSL")
+        validate_fragment(low_path)
+
         medium = compile_source(
             "src/Example/CompilerSphere.idr",
             temporary,
@@ -145,7 +158,7 @@ def main() -> int:
             float_precision="half",
         )
         require(
-            "float-precision must be highp or mediump" in bad_precision.stdout,
+            "float-precision must be lowp, mediump, or highp" in bad_precision.stdout,
             "invalid precision directive was not rejected:\n" + bad_precision.stdout,
         )
         require(
