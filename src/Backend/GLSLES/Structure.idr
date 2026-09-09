@@ -73,6 +73,37 @@ unique [] = []
 unique (value :: rest) =
   if elem value rest then unique rest else value :: unique rest
 
+addMissing : List String -> List String -> List String
+addMissing [] existing = existing
+addMissing (value :: rest) existing =
+  if elem value existing
+     then addMissing rest existing
+     else addMissing rest (value :: existing)
+
+||| Follow one operand's dependency chain with one backwards pass over the
+||| already-emitted statements. Earlier versions repeatedly searched the whole
+||| prefix once per dependency and therefore needed a hard 256-binding cutoff.
+||| This walk visits each preceding statement at most once for one result and
+||| scales to the large fixed-array shaders used by Analytic Continuation.
+dependencyScan : List Statement -> List String -> List String -> List String
+dependencyScan [] _ found = found
+dependencyScan (SBinding binding :: rest) wanted found =
+  let name = bindingNameOf binding
+   in if elem name wanted
+         then dependencyScan rest
+                (addMissing (bindingLocals binding) wanted)
+                (name :: found)
+         else dependencyScan rest wanted found
+dependencyScan (SIf _ :: rest) wanted found =
+  -- A previously recovered branch is an intentional structure barrier. Its
+  -- result remains outside a later branch rather than being flattened again.
+  dependencyScan rest wanted found
+
+operandDependencies : List Statement -> Operand ty -> List String
+operandDependencies statements (OLocal name) = dependencyScan statements [name] []
+operandDependencies _ (OFloat _) = []
+operandDependencies _ (OBool _) = []
+
 without : List String -> List String -> List String
 without [] _ = []
 without (value :: rest) excluded =
@@ -82,33 +113,6 @@ common : List String -> List String -> List String
 common [] _ = []
 common (value :: rest) other =
   if elem value other then value :: common rest other else common rest other
-
-findPlainBinding : String -> List Statement -> Maybe Binding
-findPlainBinding _ [] = Nothing
-findPlainBinding wanted (SBinding binding :: rest) =
-  if bindingNameOf binding == wanted then Just binding else findPlainBinding wanted rest
-findPlainBinding wanted (SIf _ :: rest) = findPlainBinding wanted rest
-
-||| Follow local dependencies with explicit fuel. Every IR binding has at most a
-||| handful of operands, so eight work-list entries per preceding binding is a
-||| conservative bound while keeping the pass total.
-dependenciesWork : Nat -> List Statement -> List String -> List String -> List String
-dependenciesWork Z _ _ _ = []
-dependenciesWork (S fuel) _ _ [] = []
-dependenciesWork (S fuel) statements seen (name :: rest) =
-  if elem name seen
-     then dependenciesWork fuel statements seen rest
-     else case findPlainBinding name statements of
-       Nothing => dependenciesWork fuel statements seen rest
-       Just binding =>
-         unique (name :: dependenciesWork fuel statements (name :: seen)
-                                          (bindingLocals binding ++ rest))
-
-operandDependencies : List Statement -> Operand ty -> List String
-operandDependencies statements (OLocal name) =
-  dependenciesWork (S (8 * length statements)) statements [] [name]
-operandDependencies _ (OFloat _) = []
-operandDependencies _ (OBool _) = []
 
 bindingsNamedInOrder : List Statement -> List String -> List Binding
 bindingsNamedInOrder reversedStatements wanted = collect (reverse reversedStatements)
@@ -200,22 +204,12 @@ structure reversedStatements (binding :: rest) =
     Nothing => structure (SBinding binding :: reversedStatements) rest
     Just (remaining, statement) => structure (statement :: remaining) rest
 
-structureAnalysisLimit : Nat
-structureAnalysisLimit = 256
-
-plainStatements : List Binding -> List Statement
-plainStatements = map SBinding
-
 ||| Recover only control flow that is both safe to move and expensive enough
 ||| to justify a real branch. Cheap selects remain ordinary RSelect bindings.
 |||
-||| The first recovery implementation deliberately analyzes only small shader
-||| bodies. Its list-based dependency searches are not allowed to make large
-||| shaders compile pathologically; larger bodies stay in the original linear
-||| form until this pass is replaced by a linear-time liveness/use analysis.
+||| There is intentionally no shader-size cutoff. Dependency discovery is a
+||| backwards scan rather than repeated whole-prefix lookup, so large shaders
+||| can retain control flow instead of falling back to eager branch evaluation.
 public export
 structureBindings : List Binding -> List Statement
-structureBindings bindings =
-  if length bindings <= structureAnalysisLimit
-     then structure [] bindings
-     else plainStatements bindings
+structureBindings = structure []
