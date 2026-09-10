@@ -44,6 +44,7 @@ maybeOperandLocals : Maybe (Operand ty) -> List String
 maybeOperandLocals Nothing = []
 maybeOperandLocals (Just value) = operandLocals value
 
+covering
 statementLocals : Statement -> List String
 statementLocals (SBinding binding) = bindingLocals binding
 statementLocals (SIf _ _ condition thenStatements thenResult elseStatements elseResult) =
@@ -109,6 +110,7 @@ usesAny : List String -> List String -> Bool
 usesAny [] _ = False
 usesAny (name :: rest) wanted = elem name wanted || usesAny rest wanted
 
+covering
 statementsUse : List String -> List Statement -> Bool
 statementsUse _ [] = False
 statementsUse names (statement :: rest) = usesAny (statementLocals statement) names || statementsUse names rest
@@ -117,6 +119,7 @@ futureUses : List String -> List Binding -> Bool
 futureUses _ [] = False
 futureUses names (binding :: rest) = usesAny (bindingLocals binding) names || futureUses names rest
 
+covering
 externalRoots : List String -> List Statement -> List Binding -> List String
 externalRoots [] _ _ = []
 externalRoots (name :: rest) outside future =
@@ -148,6 +151,7 @@ worthMoving body = bindingsCost body >= 4
 asStatements : List Binding -> List Statement
 asStatements = map SBinding
 
+covering
 tryStructured : List Statement -> Binding -> List Binding -> Maybe (List Statement, Statement)
 tryStructured reversedStatements (MkBinding ty name (RSelect condition whenTrue whenFalse)) future =
   let thenDependencies = operandDependencies reversedStatements whenTrue
@@ -183,6 +187,7 @@ tryStructured reversedStatements (MkBinding ty name (RSelect condition whenTrue 
                          )
 tryStructured _ _ _ = Nothing
 
+covering
 structure : List Statement -> List Binding -> List Statement
 structure reversedStatements [] = reverse reversedStatements
 structure reversedStatements (binding :: rest) =
@@ -192,6 +197,7 @@ structure reversedStatements (binding :: rest) =
 
 ||| Transitional compatibility for legacy linear RSelect producers. New source
 ||| control flow should already be represented by Statement before this point.
+covering
 public export
 structureBindings : List Binding -> List Statement
 structureBindings = structure []
