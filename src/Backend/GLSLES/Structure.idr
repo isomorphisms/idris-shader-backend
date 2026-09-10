@@ -36,12 +36,24 @@ rhsLocals (RSelect condition whenTrue whenFalse) = operandLocals condition ++ op
 bindingLocals : Binding -> List String
 bindingLocals (MkBinding _ _ rhs) = rhsLocals rhs
 
+without : List String -> List String -> List String
+without [] _ = []
+without (value :: rest) excluded = if elem value excluded then without rest excluded else value :: without rest excluded
+
+maybeOperandLocals : Maybe (Operand ty) -> List String
+maybeOperandLocals Nothing = []
+maybeOperandLocals (Just value) = operandLocals value
+
 statementLocals : Statement -> List String
 statementLocals (SBinding binding) = bindingLocals binding
 statementLocals (SIf _ _ condition thenStatements thenResult elseStatements elseResult) =
   operandLocals condition ++
   concatMap statementLocals thenStatements ++ operandLocals thenResult ++
   concatMap statementLocals elseStatements ++ operandLocals elseResult
+statementLocals (SBoundedLoop _ _ indexName stateName _ activeBound initialState body bodyResult) =
+  maybeOperandLocals activeBound ++ operandLocals initialState ++
+  without (concatMap statementLocals body ++ operandLocals bodyResult)
+          [indexName, stateName]
 
 unique : List String -> List String
 unique [] = []
@@ -63,15 +75,13 @@ dependencyScan (SBinding binding :: rest) wanted found =
      then dependencyScan rest (addMissing (bindingLocals binding) wanted) (name :: found)
      else dependencyScan rest wanted found
 dependencyScan (SIf _ _ _ _ _ _ _ :: rest) wanted found = dependencyScan rest wanted found
+dependencyScan (SBoundedLoop _ _ _ _ _ _ _ _ _ :: rest) wanted found =
+  dependencyScan rest wanted found
 
 operandDependencies : List Statement -> Operand ty -> List String
 operandDependencies statements (OLocal name) = dependencyScan statements [name] []
 operandDependencies _ (OFloat _) = []
 operandDependencies _ (OBool _) = []
-
-without : List String -> List String -> List String
-without [] _ = []
-without (value :: rest) excluded = if elem value excluded then without rest excluded else value :: without rest excluded
 
 common : List String -> List String -> List String
 common [] _ = []
@@ -85,12 +95,15 @@ bindingsNamedInOrder reversedStatements wanted = collect (reverse reversedStatem
     collect (SBinding binding :: rest) =
       if elem (bindingNameOf binding) wanted then binding :: collect rest else collect rest
     collect (SIf _ _ _ _ _ _ _ :: rest) = collect rest
+    collect (SBoundedLoop _ _ _ _ _ _ _ _ _ :: rest) = collect rest
 
 removeNamed : List String -> List Statement -> List Statement
 removeNamed _ [] = []
 removeNamed names (SBinding binding :: rest) =
   if elem (bindingNameOf binding) names then removeNamed names rest else SBinding binding :: removeNamed names rest
 removeNamed names (statement@(SIf _ _ _ _ _ _ _) :: rest) = statement :: removeNamed names rest
+removeNamed names (statement@(SBoundedLoop _ _ _ _ _ _ _ _ _) :: rest) =
+  statement :: removeNamed names rest
 
 usesAny : List String -> List String -> Bool
 usesAny [] _ = False
