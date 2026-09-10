@@ -172,22 +172,22 @@ stateReturn _ = Nothing
 
 argumentFor : Int -> List Int -> List AVar -> Maybe AVar
 argumentFor _ [] [] = Nothing
-argumentFor wanted (parameter :: parameters) (argument :: arguments) =
+argumentFor wanted (parameter :: params) (argument :: arguments) =
   if wanted == parameter
      then Just argument
-     else argumentFor wanted parameters arguments
+     else argumentFor wanted params arguments
 argumentFor _ _ _ = Nothing
 
 sameInvariantArguments : Int -> Int -> List Int -> List AVar -> Bool
 sameInvariantArguments _ _ [] [] = True
 sameInvariantArguments indexParameter stateParameter
-                       (parameter :: parameters) (argument :: arguments) =
+                       (parameter :: params) (argument :: arguments) =
   let current =
         if parameter == indexParameter || parameter == stateParameter
            then True
            else argument == ALocal parameter
    in current &&
-      sameInvariantArguments indexParameter stateParameter parameters arguments
+      sameInvariantArguments indexParameter stateParameter params arguments
 sameInvariantArguments _ _ _ _ = False
 
 isOne : Bindings -> AVar -> Bool
@@ -213,16 +213,16 @@ matchIncrement _ _ ANull = False
 
 public export
 matchBoundedLoop : Name -> ANFDef -> Maybe BoundedLoopShape
-matchBoundedLoop self (MkAFun parameters body) = do
+matchBoundedLoop self (MkAFun params body) = do
   (condition, trueBody, falseBody) <- matchCase body
   (indexParameter, activeParameter, maximum) <- matchLessThan condition
   stateParameter <- stateReturn falseBody
   if indexParameter == stateParameter ||
      indexParameter == activeParameter ||
      stateParameter == activeParameter ||
-     not (elem indexParameter parameters) ||
-     not (elem stateParameter parameters) ||
-     not (elem activeParameter parameters)
+     not (elem indexParameter params) ||
+     not (elem stateParameter params) ||
+     not (elem activeParameter params)
      then Nothing
      else pure ()
   let (bodyBindings, terminal) = peelLets trueBody
@@ -231,13 +231,13 @@ matchBoundedLoop self (MkAFun parameters body) = do
       if called == self then Just arguments else Nothing
     _ => Nothing
   if sameInvariantArguments indexParameter stateParameter
-                            parameters recursiveArguments
+                            params recursiveArguments
      then pure ()
      else Nothing
-  nextIndex <- argumentFor indexParameter parameters recursiveArguments
+  nextIndex <- argumentFor indexParameter params recursiveArguments
   if matchIncrement indexParameter bodyBindings nextIndex
      then pure ()
      else Nothing
-  Just (MkBoundedLoopShape parameters indexParameter stateParameter
+  Just (MkBoundedLoopShape params indexParameter stateParameter
                            activeParameter maximum trueBody)
 matchBoundedLoop _ _ = Nothing
