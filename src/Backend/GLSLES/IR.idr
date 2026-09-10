@@ -227,8 +227,8 @@ record Binding where
   bindingName : String
   bindingRhs : Rhs bindingTy
 
-||| Structured statements are part of the checked shader IR. A source case is
-||| represented as a branch before target code generation; it is not flattened
+||| Structured statements are part of the checked shader IR. Source control
+||| flow is preserved before target code generation instead of being flattened
 ||| into eagerly computed values and rediscovered later.
 public export
 data Statement : Type where
@@ -239,6 +239,15 @@ data Statement : Type where
         List Statement -> Operand resultTy ->
         List Statement -> Operand resultTy ->
         Statement
+  SBoundedLoop : (stateTy : ValueTy) ->
+                 (resultName : String) ->
+                 (indexName : String) ->
+                 (stateName : String) ->
+                 (maximumIterations : Nat) ->
+                 Maybe (Operand TFloat) ->
+                 Operand stateTy ->
+                 List Statement -> Operand stateTy ->
+                 Statement
 
 public export
 record FragmentProgram where
