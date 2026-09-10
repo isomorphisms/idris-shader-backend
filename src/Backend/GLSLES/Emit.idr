@@ -199,6 +199,20 @@ mutual
         elseYield = indent ++ "  yield " ++ operandText [] elseResult
         footer = indent ++ "}"
     Right (header :: thenLines ++ [thenYield, elseHeader] ++ elseLines ++ [elseYield, footer])
+  dumpStatementAt indent
+                  (SBoundedLoop ty name indexName stateName maximumIterations activeBound
+                                initialState body bodyResult) = do
+    bodyLines <- dumpStatementsAt (indent ++ "  ") body
+    let activeText = case activeBound of
+                          Nothing => ""
+                          Just bound => " active < " ++ operandText [] bound
+        header = indent ++ name ++ " : " ++ semanticType ty ++
+                 " = bounded-loop " ++ indexName ++ " < " ++ show maximumIterations ++
+                 activeText ++ " state " ++ stateName ++ " from " ++
+                 operandText [] initialState ++ " {"
+        bodyYield = indent ++ "  yield " ++ operandText [] bodyResult
+        footer = indent ++ "}"
+    Right (header :: bodyLines ++ [bodyYield, footer])
 
   dumpStatementsAt : String -> List Statement -> Either String (List String)
   dumpStatementsAt _ [] = Right []
@@ -209,7 +223,7 @@ mutual
 
 ||| A stable, human-readable dump of the typed structured IR before GLSL CSE.
 ||| Floating-point widths are semantic names (F32/F32xN), not GLSL precision
-||| qualifiers. Source conditionals remain visible as structured blocks.
+||| qualifiers. Source branches and bounded loops remain visible as structure.
 public export
 dumpFragmentIR : FragmentProgram -> Either String String
 dumpFragmentIR program = do
@@ -271,6 +285,36 @@ mutual
     emitStatementsAt indent rest ((name, name) :: aliases) cache
                      (reverse block ++ reversedLines)
 
+  emitBoundedLoopAt : String -> ValueTy -> String -> String -> String -> Nat ->
+                      Maybe (Operand TFloat) -> Operand ty ->
+                      List Statement -> Operand ty ->
+                      List Statement -> Aliases -> Cache -> List String ->
+                      Either String (Aliases, List String)
+  emitBoundedLoopAt indent ty name indexName stateName maximumIterations activeBound
+                    initialState body bodyResult rest aliases cache reversedLines = do
+    renderedTy <- glslType ty
+    let rawIndexName = name ++ "_index"
+        loopAliases =
+          (indexName, "float(" ++ rawIndexName ++ ")") ::
+          (stateName, name) :: aliases
+    (bodyAliases, bodyLines) <-
+      emitStatementsAt (indent ++ "  ") body loopAliases cache []
+    let activeText = case activeBound of
+                          Nothing => ""
+                          Just bound =>
+                            " && float(" ++ rawIndexName ++ ") < " ++ operandText aliases bound
+        initialLine =
+          indent ++ renderedTy ++ " " ++ name ++ " = " ++
+          operandText aliases initialState ++ ";"
+        loopHeader =
+          indent ++ "for (int " ++ rawIndexName ++ " = 0; " ++ rawIndexName ++
+          " < " ++ show maximumIterations ++ activeText ++ "; ++" ++ rawIndexName ++ ") {"
+        updateLine = indent ++ "  " ++ name ++ " = " ++ operandText bodyAliases bodyResult ++ ";"
+        footer = indent ++ "}"
+        block = [initialLine, loopHeader] ++ bodyLines ++ [updateLine, footer]
+    emitStatementsAt indent rest ((name, name) :: aliases) cache
+                     (reverse block ++ reversedLines)
+
   emitStatementsAt : String -> List Statement -> Aliases -> Cache -> List String ->
                      Either String (Aliases, List String)
   emitStatementsAt _ [] aliases _ reversedLines = Right (aliases, reverse reversedLines)
@@ -281,6 +325,12 @@ mutual
     emitStructuredIfAt indent ty name condition
                        thenStatements thenResult elseStatements elseResult
                        rest aliases cache reversedLines
+  emitStatementsAt indent
+                   (SBoundedLoop ty name indexName stateName maximumIterations activeBound
+                                 initialState body bodyResult :: rest)
+                   aliases cache reversedLines =
+    emitBoundedLoopAt indent ty name indexName stateName maximumIterations activeBound
+                      initialState body bodyResult rest aliases cache reversedLines
 
 ||| Emit deterministic GLSL ES 3.00 with an explicit default floating-point
 ||| precision. Structured source control flow is emitted directly from the
