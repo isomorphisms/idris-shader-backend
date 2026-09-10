@@ -5,6 +5,7 @@ import Core.Name
 import Core.TT
 import Data.List
 import Data.Vect
+import Debug.Trace
 
 %default covering
 
@@ -248,9 +249,8 @@ boundedLoopDiagnosis self (MkAFun params body) =
                      _ => "true branch does not end in a named tail call"
 boundedLoopDiagnosis _ _ = "definition is not a first-order function"
 
-public export
-matchBoundedLoop : Name -> ANFDef -> Maybe BoundedLoopShape
-matchBoundedLoop self (MkAFun params body) = do
+matchBoundedLoopMaybe : Name -> ANFDef -> Maybe BoundedLoopShape
+matchBoundedLoopMaybe self (MkAFun params body) = do
   (condition, trueBody, falseBody) <- matchCase body
   (indexParameter, activeParameter, maximum) <- matchLessThan condition
   stateParameter <- stateReturn falseBody
@@ -277,4 +277,12 @@ matchBoundedLoop self (MkAFun params body) = do
      else Nothing
   Just (MkBoundedLoopShape params indexParameter stateParameter
                            activeParameter maximum trueBody)
-matchBoundedLoop _ _ = Nothing
+matchBoundedLoopMaybe _ _ = Nothing
+
+public export
+matchBoundedLoop : Name -> ANFDef -> Maybe BoundedLoopShape
+matchBoundedLoop self definition =
+  case matchBoundedLoopMaybe self definition of
+    Just shape => Just shape
+    Nothing => trace ("bounded-loop miss " ++ show self ++ ": " ++
+                      boundedLoopDiagnosis self definition) Nothing
