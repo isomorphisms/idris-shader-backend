@@ -212,6 +212,43 @@ matchIncrement indexParameter bindings (ALocal variable) =
 matchIncrement _ _ ANull = False
 
 public export
+boundedLoopDiagnosis : Name -> ANFDef -> String
+boundedLoopDiagnosis self (MkAFun params body) =
+  case matchCase body of
+    Nothing => "body is not a two-way boolean case"
+    Just (condition, trueBody, falseBody) =>
+      case matchLessThan condition of
+        Nothing => "condition is not index < minF active constant: " ++ show condition
+        Just (indexParameter, activeParameter, maximum) =>
+          case stateReturn falseBody of
+            Nothing => "false branch does not return the loop-carried state"
+            Just stateParameter =>
+              if indexParameter == stateParameter ||
+                 indexParameter == activeParameter ||
+                 stateParameter == activeParameter ||
+                 not (elem indexParameter params) ||
+                 not (elem stateParameter params) ||
+                 not (elem activeParameter params)
+                 then "index, active bound, and state are not distinct function parameters"
+                 else
+                   let (bodyBindings, terminal) = peelLets trueBody in
+                   case terminal of
+                     AAppName _ _ called recursiveArguments =>
+                       if called /= self
+                          then "true branch is not a tail call to the bounded helper"
+                          else if not (sameInvariantArguments indexParameter stateParameter
+                                                             params recursiveArguments)
+                                  then "tail call changes a non-index, non-state loop argument"
+                                  else case argumentFor indexParameter params recursiveArguments of
+                                         Nothing => "tail call has no induction argument"
+                                         Just nextIndex =>
+                                           if matchIncrement indexParameter bodyBindings nextIndex
+                                              then "matched bounded loop with maximum " ++ show maximum
+                                              else "induction argument is not index + 1.0"
+                     _ => "true branch does not end in a named tail call"
+boundedLoopDiagnosis _ _ = "definition is not a first-order function"
+
+public export
 matchBoundedLoop : Name -> ANFDef -> Maybe BoundedLoopShape
 matchBoundedLoop self (MkAFun params body) = do
   (condition, trueBody, falseBody) <- matchCase body
