@@ -10,7 +10,7 @@ opts = "--inc chez"
 modules = Backend.GLSLES.FloatSemantics, Backend.GLSLES.Sensitivity,
           Backend.GLSLES.IR, Backend.GLSLES.Structure,
           Backend.GLSLES.Interface, Backend.GLSLES.Signature,
-          Backend.GLSLES.Lower, Backend.GLSLES.Emit,
+          Backend.GLSLES.Bounded, Backend.GLSLES.Lower, Backend.GLSLES.Emit,
           Backend.GLSLES.Codegen, Backend.GLSLES.Main
 
 main = Backend.GLSLES.Main
