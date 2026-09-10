@@ -4,8 +4,8 @@ import Compiler.ANF
 import Core.Name
 import Core.TT
 import Data.List
+import Data.String
 import Data.Vect
-import Debug.Trace
 
 %default covering
 
@@ -79,12 +79,19 @@ boundExpression : Bindings -> AVar -> Maybe ANF
 boundExpression bindings (ALocal variable) = lookupBinding variable bindings
 boundExpression _ ANull = Nothing
 
+||| Interface-method names may reach ANF wrapped in a display-name constructor.
+||| `nameRoot` intentionally ignores that display spelling, so accept the
+||| canonical qualified spelling as well as an ordinary root name.
+isLessThanName : Name -> Bool
+isLessThanName name =
+  nameRoot name == "<" || show name == "<" || isSuffixOf ".<" (show name)
+
 matchLessThan : ANF -> Maybe (Int, Int, Nat)
 matchLessThan expression =
   let (bindings, terminal) = peelLets expression in
   case terminal of
     AAppName _ _ comparison [index, bound] =>
-      if nameRoot comparison == "<"
+      if isLessThanName comparison
          then do
            indexParameter <- localNumber index
            boundValue <- boundExpression bindings bound
@@ -213,44 +220,8 @@ matchIncrement indexParameter bindings (ALocal variable) =
 matchIncrement _ _ ANull = False
 
 public export
-boundedLoopDiagnosis : Name -> ANFDef -> String
-boundedLoopDiagnosis self (MkAFun params body) =
-  case matchCase body of
-    Nothing => "body is not a two-way boolean case"
-    Just (condition, trueBody, falseBody) =>
-      case matchLessThan condition of
-        Nothing => "condition is not index < minF active constant: " ++ show condition
-        Just (indexParameter, activeParameter, maximum) =>
-          case stateReturn falseBody of
-            Nothing => "false branch does not return the loop-carried state"
-            Just stateParameter =>
-              if indexParameter == stateParameter ||
-                 indexParameter == activeParameter ||
-                 stateParameter == activeParameter ||
-                 not (elem indexParameter params) ||
-                 not (elem stateParameter params) ||
-                 not (elem activeParameter params)
-                 then "index, active bound, and state are not distinct function parameters"
-                 else
-                   let (bodyBindings, terminal) = peelLets trueBody in
-                   case terminal of
-                     AAppName _ _ called recursiveArguments =>
-                       if called /= self
-                          then "true branch is not a tail call to the bounded helper"
-                          else if not (sameInvariantArguments indexParameter stateParameter
-                                                             params recursiveArguments)
-                                  then "tail call changes a non-index, non-state loop argument"
-                                  else case argumentFor indexParameter params recursiveArguments of
-                                         Nothing => "tail call has no induction argument"
-                                         Just nextIndex =>
-                                           if matchIncrement indexParameter bodyBindings nextIndex
-                                              then "matched bounded loop with maximum " ++ show maximum
-                                              else "induction argument is not index + 1.0"
-                     _ => "true branch does not end in a named tail call"
-boundedLoopDiagnosis _ _ = "definition is not a first-order function"
-
-matchBoundedLoopMaybe : Name -> ANFDef -> Maybe BoundedLoopShape
-matchBoundedLoopMaybe self (MkAFun params body) = do
+matchBoundedLoop : Name -> ANFDef -> Maybe BoundedLoopShape
+matchBoundedLoop self (MkAFun params body) = do
   (condition, trueBody, falseBody) <- matchCase body
   (indexParameter, activeParameter, maximum) <- matchLessThan condition
   stateParameter <- stateReturn falseBody
@@ -267,8 +238,7 @@ matchBoundedLoopMaybe self (MkAFun params body) = do
     AAppName _ _ called arguments =>
       if called == self then Just arguments else Nothing
     _ => Nothing
-  if sameInvariantArguments indexParameter stateParameter
-                            params recursiveArguments
+  if sameInvariantArguments indexParameter stateParameter params recursiveArguments
      then pure ()
      else Nothing
   nextIndex <- argumentFor indexParameter params recursiveArguments
@@ -277,12 +247,4 @@ matchBoundedLoopMaybe self (MkAFun params body) = do
      else Nothing
   Just (MkBoundedLoopShape params indexParameter stateParameter
                            activeParameter maximum trueBody)
-matchBoundedLoopMaybe _ _ = Nothing
-
-public export
-matchBoundedLoop : Name -> ANFDef -> Maybe BoundedLoopShape
-matchBoundedLoop self definition =
-  case matchBoundedLoopMaybe self definition of
-    Just shape => Just shape
-    Nothing => trace ("bounded-loop miss " ++ show self ++ ": " ++
-                      boundedLoopDiagnosis self definition) Nothing
+matchBoundedLoop _ _ = Nothing
