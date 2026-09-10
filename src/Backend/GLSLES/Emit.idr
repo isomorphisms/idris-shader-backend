@@ -130,7 +130,7 @@ rhsText aliases (RBoolBinary BAnd left right) =
 rhsText aliases (RBoolBinary BOr left right) =
   "(" ++ operandText aliases left ++ " || " ++ operandText aliases right ++ ")"
 rhsText aliases (RIntToFloat value) = "float(" ++ operandText aliases value ++ ")"
-rhsText aliases (RArrayIndex array index) =
+rhsText aliases (RArrayIndex _ array index) =
   operandText aliases array ++ "[int(" ++ operandText aliases index ++ ")]"
 rhsText aliases (RVec2 x y) =
   "vec2(" ++ operandText aliases x ++ ", " ++ operandText aliases y ++ ")"
