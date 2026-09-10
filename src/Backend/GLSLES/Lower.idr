@@ -1,5 +1,6 @@
 module Backend.GLSLES.Lower
 
+import Backend.GLSLES.Bounded
 import Backend.GLSLES.IR
 import Compiler.ANF
 import Core.Name
@@ -306,6 +307,38 @@ bindArguments params values =
   Left ("function expected " ++ show (length params) ++
         " runtime arguments, received " ++ show (length values))
 
+argumentForParameter : Int -> List Int -> List AVar -> Maybe AVar
+argumentForParameter _ [] [] = Nothing
+argumentForParameter wanted (parameter :: params) (argument :: arguments) =
+  if wanted == parameter
+     then Just argument
+     else argumentForParameter wanted params arguments
+argumentForParameter _ _ _ = Nothing
+
+startsAtZero : Operand TFloat -> Bool
+startsAtZero (OFloat value) = value == 0.0
+startsAtZero _ = False
+
+loopStateAllowed : ValueTy -> Bool
+loopStateAllowed (TArray _ _) = False
+loopStateAllowed _ = True
+
+arrayAccessSafe : Nat -> String -> Rhs ty -> Bool
+arrayAccessSafe maximum indexName (RArrayIndex {n} _ index) =
+  case index of
+    OLocal name => name == indexName && maximum <= n
+    _ => False
+arrayAccessSafe _ _ _ = True
+
+statementArraysSafe : Nat -> String -> Statement -> Bool
+statementArraysSafe maximum indexName (SBinding (MkBinding _ _ rhs)) =
+  arrayAccessSafe maximum indexName rhs
+statementArraysSafe maximum indexName
+                    (SIf _ _ _ thenStatements _ elseStatements _) =
+  all (statementArraysSafe maximum indexName) thenStatements &&
+  all (statementArraysSafe maximum indexName) elseStatements
+statementArraysSafe _ _ (SBoundedLoop _ _ _ _ _ _ _ _ _) = False
+
 boolConstant : Constant -> Maybe Bool
 boolConstant (I 0) = Just False
 boolConstant (I 1) = Just True
@@ -345,6 +378,78 @@ findConBranch wanted (MkAConAlt name _ _ _ body :: rest) =
     _ => findConBranch wanted rest
 
 mutual
+  lowerLoopBody : ShaderDefs -> List Name -> Env -> Name ->
+                  List Int -> Int -> ANF -> Lower SomeOperand
+  lowerLoopBody definitions stack env self params stateParameter
+                (ALet _ variable value scope) = do
+    lowered <- lowerANF definitions stack env value
+    lowerLoopBody definitions stack ((variable, lowered) :: env)
+                  self params stateParameter scope
+  lowerLoopBody _ _ env self params stateParameter
+                (AAppName _ _ called arguments) =
+    if called == self
+       then case argumentForParameter stateParameter params arguments of
+              Nothing => failLower "bounded loop recursion has no state argument"
+              Just stateArgument => liftEither (resolveVar env stateArgument)
+       else failLower ("bounded loop body ends in unexpected call: " ++ show called)
+  lowerLoopBody _ _ _ self _ _ _ =
+    failLower ("bounded loop body for " ++ show self ++
+               " is outside the admitted tail-iteration source shape")
+
+  lowerBoundedCall : ShaderDefs -> List Name -> Name -> BoundedLoopShape ->
+                     Env -> Lower SomeOperand
+  lowerBoundedCall definitions stack self shape callEnv = do
+    indexValue <- liftEither (lookupLocal (loopIndexParameter shape) callEnv)
+    index <- liftEither (expectFloat indexValue)
+    if startsAtZero index
+       then pure ()
+       else failLower "bounded shader iteration must start at index 0"
+    activeValue <- liftEither (lookupLocal (loopActiveParameter shape) callEnv)
+    active <- liftEither (expectFloat activeValue)
+    stateValue <- liftEither (lookupLocal (loopStateParameter shape) callEnv)
+    case stateValue of
+      PackOperand stateTy initialState =>
+        if not (loopStateAllowed stateTy)
+           then failLower "bounded shader iteration cannot carry an array as loop state"
+           else MkLower $ \state => do
+             let resultName = "_idris_t" ++ show (nextTemp state)
+                 indexName = resultName ++ "_index_value"
+                 stateName = resultName ++ "_state"
+                 bodyEnv =
+                   ( loopIndexParameter shape
+                   , PackOperand TFloat (OLocal indexName)
+                   ) ::
+                   ( loopStateParameter shape
+                   , PackOperand stateTy (OLocal stateName)
+                   ) :: callEnv
+                 bodyStart = MkLowerState (S (nextTemp state)) []
+             (bodyState, bodyValue) <-
+               runLower
+                 (lowerLoopBody definitions (self :: stack) bodyEnv self
+                                (loopParameters shape) (loopStateParameter shape)
+                                (loopBody shape))
+                 bodyStart
+             case bodyValue of
+               PackOperand bodyTy bodyResult =>
+                 case decEq stateTy bodyTy of
+                   No _ => Left ("bounded loop state changes shader type from " ++
+                                 show stateTy ++ " to " ++ show bodyTy)
+                   Yes Refl =>
+                     let bodyStatements = reverse (reversedStatements bodyState)
+                      in if all (statementArraysSafe (loopMaximum shape) indexName)
+                                bodyStatements
+                            then
+                              let statement =
+                                    SBoundedLoop stateTy resultName indexName stateName
+                                      (loopMaximum shape) (Just active) initialState
+                                      bodyStatements bodyResult
+                                  final =
+                                    MkLowerState (nextTemp bodyState)
+                                                 (statement :: reversedStatements state)
+                               in Right (final, PackOperand stateTy (OLocal resultName))
+                            else Left ("bounded loop array access is not proven within " ++
+                                       show (loopMaximum shape) ++ " elements")
+
   lowerCall : ShaderDefs -> List Name -> Env -> Name -> List AVar -> Lower SomeOperand
   lowerCall definitions stack env name arguments = do
     if elem name stack
@@ -356,7 +461,9 @@ mutual
     case definition of
       MkAFun params body => do
         callEnv <- liftEither (bindArguments params values)
-        lowerANF definitions (name :: stack) callEnv body
+        case matchBoundedLoop name definition of
+          Just shape => lowerBoundedCall definitions stack name shape callEnv
+          Nothing => lowerANF definitions (name :: stack) callEnv body
       _ => failLower ("shader call does not name a first-order function: " ++ show name)
 
   lowerStructuredCase : ShaderDefs -> List Name -> Env -> Operand TBool ->
