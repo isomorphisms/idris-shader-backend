@@ -46,8 +46,15 @@ def compile_probe(temporary: Path, precision: str) -> tuple[str, str]:
     )
     require(result.returncode == 0, f"{precision} bounded loop did not compile:\n" + result.stdout)
     shader_path = temporary / f"bounded-loop-{precision}.frag"
-    require(shader_path.is_file(), f"backend did not write {shader_path.name}")
-    require(ir_path.is_file(), f"backend did not write {ir_path.name}")
+    listing = ", ".join(sorted(path.name for path in temporary.iterdir()))
+    require(
+        shader_path.is_file(),
+        f"backend did not write {shader_path.name}; output:\n{result.stdout}\ntemporary files: {listing}",
+    )
+    require(
+        ir_path.is_file(),
+        f"backend did not write {ir_path.name}; output:\n{result.stdout}\ntemporary files: {listing}",
+    )
 
     validator = shutil.which("glslangValidator")
     if validator is not None:
