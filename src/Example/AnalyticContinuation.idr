@@ -6,8 +6,8 @@ import Shader.Source
 
 %default total
 
-covering
 %export "glsles:fragment|v_ndc=in,u_center=uniform,u_half_height=uniform,u_aspect=uniform,u_resolution=uniform,u_zero_count=uniform,u_pole_count=uniform,u_zeros=uniform,u_poles=uniform,u_view_kind=uniform,u_continuation_count=uniform,u_continuation_centers=uniform,u_continuation_radii=uniform"
+covering
 analytic_continuation : SVec 2 -> SVec 2 -> Double -> Double -> SVec 2 ->
                         Int -> Int -> SArray 64 (SVec 2) -> SArray 64 (SVec 2) ->
                         Int -> Int -> SArray 24 (SVec 2) -> SArray 24 Double -> SVec 4
