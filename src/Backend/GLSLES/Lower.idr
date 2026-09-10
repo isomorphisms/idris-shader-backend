@@ -162,9 +162,9 @@ intToFloat values = do
 arrayIndex : List SomeOperand -> Lower SomeOperand
 arrayIndex values = do
   (arrayValue, indexValue) <- liftEither (two "array_at" values)
-  PackArray _ elementTy array <- liftEither (expectArray arrayValue)
+  PackArray n elementTy array <- liftEither (expectArray arrayValue)
   index <- liftEither (expectFloat indexValue)
-  result <- emit (RArrayIndex array index)
+  result <- emit (RArrayIndex n array index)
   pure (PackOperand (arrayElementValueTy elementTy) result)
 
 lowerPrim : Env -> PrimFn arity -> List AVar -> Lower SomeOperand
@@ -323,14 +323,10 @@ loopStateAllowed : ValueTy -> Bool
 loopStateAllowed (TArray _ _) = False
 loopStateAllowed _ = True
 
-arrayCapacityAtLeast : {n : Nat} -> {elementTy : ArrayElementTy} ->
-                       Nat -> Operand (TArray n elementTy) -> Bool
-arrayCapacityAtLeast {n} maximum _ = maximum <= n
-
 arrayAccessSafe : Nat -> String -> Rhs ty -> Bool
-arrayAccessSafe maximum indexName (RArrayIndex array index) =
+arrayAccessSafe maximum indexName (RArrayIndex capacity _ index) =
   case index of
-    OLocal name => name == indexName && arrayCapacityAtLeast maximum array
+    OLocal name => name == indexName && maximum <= capacity
     _ => False
 arrayAccessSafe _ _ _ = True
 
