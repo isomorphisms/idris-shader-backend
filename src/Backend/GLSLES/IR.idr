@@ -205,8 +205,8 @@ data Rhs : ValueTy -> Type where
   RBoolUnary : BoolUnary -> Operand TBool -> Rhs TBool
   RBoolBinary : BoolBinary -> Operand TBool -> Operand TBool -> Rhs TBool
   RIntToFloat : Operand TInt -> Rhs TFloat
-  RArrayIndex : Operand (TArray n elementTy) -> Operand TFloat ->
-                Rhs (arrayElementValueTy elementTy)
+  RArrayIndex : (capacity : Nat) -> Operand (TArray capacity elementTy) ->
+                Operand TFloat -> Rhs (arrayElementValueTy elementTy)
   RVec2 : Operand TFloat -> Operand TFloat -> Rhs (TVec 2)
   RVec3 : Operand TFloat -> Operand TFloat -> Operand TFloat -> Rhs (TVec 3)
   RVec4 : Operand TFloat -> Operand TFloat -> Operand TFloat ->
