@@ -80,8 +80,12 @@ compileGLSLES defs syn tmpDir outputDir term outfile = do
   spec <- fromEither (makeEntrySpec raw argumentTypes resultType)
   Just definition <- pure (findANF entryName (anf cdata))
     | Nothing => backendError ("could not find ANF for exported entry " ++ show entryName)
-  program <- fromEither (lowerFragment spec entryName (anf cdata) definition)
   session <- getSession
+  case directiveValue "dump-anf=" (directives session) of
+    Nothing => pure ()
+    Just "" => backendError "dump-anf directive requires a path"
+    Just path => writeShader path (show definition ++ "\n")
+  program <- fromEither (lowerFragment spec entryName (anf cdata) definition)
   case directiveValue "dump-ir=" (directives session) of
     Nothing => pure ()
     Just "" => backendError "dump-ir directive requires a path"
