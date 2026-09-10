@@ -323,10 +323,14 @@ loopStateAllowed : ValueTy -> Bool
 loopStateAllowed (TArray _ _) = False
 loopStateAllowed _ = True
 
+arrayCapacityAtLeast : {n : Nat} -> {elementTy : ArrayElementTy} ->
+                       Nat -> Operand (TArray n elementTy) -> Bool
+arrayCapacityAtLeast {n} maximum _ = maximum <= n
+
 arrayAccessSafe : Nat -> String -> Rhs ty -> Bool
-arrayAccessSafe maximum indexName (RArrayIndex {n} _ index) =
+arrayAccessSafe maximum indexName (RArrayIndex array index) =
   case index of
-    OLocal name => name == indexName && maximum <= n
+    OLocal name => name == indexName && arrayCapacityAtLeast maximum array
     _ => False
 arrayAccessSafe _ _ _ = True
 
@@ -429,26 +433,21 @@ mutual
                                 (loopParameters shape) (loopStateParameter shape)
                                 (loopBody shape))
                  bodyStart
-             case bodyValue of
-               PackOperand bodyTy bodyResult =>
-                 case decEq stateTy bodyTy of
-                   No _ => Left ("bounded loop state changes shader type from " ++
-                                 show stateTy ++ " to " ++ show bodyTy)
-                   Yes Refl =>
-                     let bodyStatements = reverse (reversedStatements bodyState)
-                      in if all (statementArraysSafe (loopMaximum shape) indexName)
-                                bodyStatements
-                            then
-                              let statement =
-                                    SBoundedLoop stateTy resultName indexName stateName
-                                      (loopMaximum shape) (Just active) initialState
-                                      bodyStatements bodyResult
-                                  final =
-                                    MkLowerState (nextTemp bodyState)
-                                                 (statement :: reversedStatements state)
-                               in Right (final, PackOperand stateTy (OLocal resultName))
-                            else Left ("bounded loop array access is not proven within " ++
-                                       show (loopMaximum shape) ++ " elements")
+             bodyResult <- expect stateTy bodyValue
+             let bodyStatements = reverse (reversedStatements bodyState)
+             if all (statementArraysSafe (loopMaximum shape) indexName)
+                    bodyStatements
+                then
+                  let statement =
+                        SBoundedLoop stateTy resultName indexName stateName
+                          (loopMaximum shape) (Just active) initialState
+                          bodyStatements bodyResult
+                      final =
+                        MkLowerState (nextTemp bodyState)
+                                     (statement :: reversedStatements state)
+                   in Right (final, PackOperand stateTy (OLocal resultName))
+                else Left ("bounded loop array access is not proven within " ++
+                           show (loopMaximum shape) ++ " elements")
 
   lowerCall : ShaderDefs -> List Name -> Env -> Name -> List AVar -> Lower SomeOperand
   lowerCall definitions stack env name arguments = do
