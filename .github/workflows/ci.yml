@@ -17,6 +17,7 @@ env:
 
 jobs:
   idris-to-glsl:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, linux, debian]
     timeout-minutes: 45
     steps:
