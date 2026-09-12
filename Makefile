@@ -6,7 +6,7 @@ GLES_LIBS ?= -lGLESv3
 
 .PHONY: build backend generate generate-compiler test backend-test check clean \
 	powervr-primitives powervr-primitives-frag powervr-primitives-host \
-	powervr-phone-accept
+	powervr-phone-accept powervr-termux-accept
 
 build:
 	$(IDRIS2) --build idris-glsl-es.ipkg
@@ -52,6 +52,9 @@ powervr-primitives: powervr-primitives-frag powervr-primitives-host
 powervr-phone-accept:
 	sh tools/accept_powervr_phone.sh
 
+powervr-termux-accept:
+	sh tools/accept_powervr_termux.sh
+
 test:
 	$(IDRIS2) --build tests.ipkg
 	./build/exec/idris-glsl-es-tests
@@ -63,6 +66,7 @@ backend-test: backend
 	python3 tools/check_surfer_root_search.py
 	python3 tools/check_powervr_primitives.py
 	sh -n tools/accept_powervr_phone.sh
+	sh -n tools/accept_powervr_termux.sh
 
 check: generate test backend-test
 	python3 tools/check_glsl.py generated/fullscreen.vert generated/sphere.frag \

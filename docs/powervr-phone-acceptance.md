@@ -2,6 +2,43 @@
 
 PR #16's software acceptance is the six-probe GLES3/EGL harness under Mesa. The remaining architecture-specific gate is the same generated GLSL compiled and executed by a real PowerVR phone driver.
 
+## Run directly on the PowerVR phone with Termux
+
+This is the path when the phone is the only available machine. From a clean
+checkout of the PR branch in Termux:
+
+```sh
+pkg install git make clang
+make powervr-termux-accept
+```
+
+The target compiles the native EGL/GLES3 harness with Termux Clang and executes
+it directly on the phone. It requires every tested shader's Git blob to match
+the named commit, records all six blob identities, requires a
+PowerVR/Imagination renderer, and applies the same compile/link, framebuffer
+readback, and timing checks as the ADB path. No USB connection, second computer,
+Android NDK installation, or ADB connection is involved.
+
+Shader generation and physical execution remain separate evidence stages. The
+exact-head GitHub CI run proves that the checked Idris source regenerates the
+tracked fragments without differences. The Termux receipt proves that those
+exact tracked fragment blobs compile and execute through the physical phone's
+identified PowerVR driver. Both must name the same commit; neither substitutes
+for the other.
+
+The Termux receipt is written to the same ignored path,
+`artifacts/powervr-phone-acceptance.txt`. A successful local receipt ends with:
+
+```text
+acceptance.generated_blobs: PASS
+acceptance.renderer: PASS
+acceptance.compile_link: 6/6 PASS
+acceptance.framebuffers: 6/6 PASS
+acceptance: PASS
+```
+
+## Run from a separate ADB host
+
 From a clean checkout of the PR branch with one Android device connected over ADB:
 
 ```sh
