@@ -18,6 +18,20 @@ Show FloatWidth where
   show F16 = "F16"
   show F32 = "F32"
 
+public export
+parseFloatWidth : String -> Either String FloatWidth
+parseFloatWidth "f16" = Right F16
+parseFloatWidth "f32" = Right F32
+parseFloatWidth other = Left ("float-width must be f16 or f32; received " ++ other)
+
+public export
+semanticScalarType : FloatWidth -> String
+semanticScalarType = show
+
+public export
+semanticVectorType : FloatWidth -> Nat -> String
+semanticVectorType width n = show width ++ "x" ++ show n
+
 ||| GLSL ES default precision class used at emission. Precision class is a
 ||| target-language execution choice; it is not itself the mathematical type.
 public export
@@ -38,7 +52,7 @@ Show ShaderPrecision where
 
 ||| Current portable width-to-precision lowering. F16 maps to mediump because
 ||| portable GLES does not promise binary16 semantics for lowp. A caller may
-||| explicitly request lowp when the rendering contract permits it.
+||| explicitly request another precision when the rendering contract permits it.
 public export
 shaderPrecision : FloatWidth -> ShaderPrecision
 shaderPrecision F16 = Medium

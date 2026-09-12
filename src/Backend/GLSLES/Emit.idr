@@ -31,21 +31,22 @@ glslType (TArray n elementTy) = do
   rendered <- arrayElementType elementTy
   Right (rendered ++ "[" ++ show n ++ "]")
 
-arrayElementSemanticType : ArrayElementTy -> String
-arrayElementSemanticType AFloat = "F32"
-arrayElementSemanticType ABool = "Bool"
-arrayElementSemanticType AInt = "Int"
-arrayElementSemanticType (AVec n) = "F32x" ++ show n
+arrayElementSemanticType : FloatWidth -> ArrayElementTy -> String
+arrayElementSemanticType width AFloat = semanticScalarType width
+arrayElementSemanticType _ ABool = "Bool"
+arrayElementSemanticType _ AInt = "Int"
+arrayElementSemanticType width (AVec n) = semanticVectorType width n
 
 ||| Semantic type spelling used in the checked IR dump. This deliberately does
-||| not reuse GLSL's width-erasing `float` / `vecN` spelling.
-semanticType : ValueTy -> String
-semanticType TFloat = "F32"
-semanticType TBool = "Bool"
-semanticType TInt = "Int"
-semanticType (TVec n) = "F32x" ++ show n
-semanticType (TArray n elementTy) =
-  arrayElementSemanticType elementTy ++ "[" ++ show n ++ "]"
+||| not reuse GLSL's width-erasing `float` / `vecN` spelling. A compilation has
+||| one requested float width until mixed-width IR is introduced.
+semanticType : FloatWidth -> ValueTy -> String
+semanticType width TFloat = semanticScalarType width
+semanticType _ TBool = "Bool"
+semanticType _ TInt = "Int"
+semanticType width (TVec n) = semanticVectorType width n
+semanticType width (TArray n elementTy) =
+  arrayElementSemanticType width elementTy ++ "[" ++ show n ++ "]"
 
 floatLiteral : Double -> String
 floatLiteral value =
@@ -174,28 +175,35 @@ declaration (MkInterfaceVar name Uniform ty) = do
   rendered <- glslType ty
   Right ("uniform " ++ rendered ++ " " ++ name ++ ";")
 
-dumpInterface : InterfaceVar -> Either String String
-dumpInterface (MkInterfaceVar name storage ty) =
+dumpInterface : FloatWidth -> InterfaceVar -> Either String String
+dumpInterface width (MkInterfaceVar name storage ty) =
   let storageText = case storage of
                          FragmentInput => "in"
                          Uniform => "uniform"
-   in Right (name ++ " : " ++ storageText ++ " " ++ semanticType ty)
+   in Right (name ++ " : " ++ storageText ++ " " ++ semanticType width ty)
 
-dumpBinding : Binding -> Either String String
-dumpBinding (MkBinding ty name rhs) =
-  Right (name ++ " : " ++ semanticType ty ++ " = " ++ rhsText [] rhs)
+dumpBinding : FloatWidth -> Binding -> Either String String
+dumpBinding width (MkBinding ty name rhs) =
+  Right (name ++ " : " ++ semanticType width ty ++ " = " ++ rhsText [] rhs)
 
 ||| A stable, human-readable dump of the typed IR before GLSL CSE and
 ||| structured-control-flow recovery. Floating-point widths are semantic names
-||| (F32/F32xN), not GLSL `float` precision qualifiers.
+||| (F16/F32 and F16xN/F32xN), not GLSL `float` precision qualifiers.
 public export
-dumpFragmentIR : FragmentProgram -> Either String String
-dumpFragmentIR program = do
-  arguments <- traverse dumpInterface (entryInterface (spec program))
-  body <- traverse dumpBinding (bindings program)
-  let header = "fragment(" ++ concat (intersperse ", " arguments) ++ ") -> F32x4"
+dumpFragmentIRWithWidth : FloatWidth -> FragmentProgram -> Either String String
+dumpFragmentIRWithWidth width program = do
+  arguments <- traverse (dumpInterface width) (entryInterface (spec program))
+  body <- traverse (dumpBinding width) (bindings program)
+  let header = "fragment(" ++ concat (intersperse ", " arguments) ++ ") -> " ++
+               semanticVectorType width 4
       output = "return " ++ operandText [] (result program)
   Right (unlines (header :: body ++ [output, ""]))
+
+||| Backward-compatible default dump: existing callers still observe F32 until
+||| they explicitly supply a whole-shader width.
+public export
+dumpFragmentIR : FragmentProgram -> Either String String
+dumpFragmentIR = dumpFragmentIRWithWidth defaultFloatWidth
 
 identityAlias : Aliases -> Rhs ty -> Maybe String
 identityAlias aliases (RSelect condition (OBool True) (OBool False)) =
