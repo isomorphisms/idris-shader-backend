@@ -1,6 +1,7 @@
 module Backend.GLSLES.Codegen
 
 import Backend.GLSLES.Emit
+import Backend.GLSLES.FloatSemantics
 import Backend.GLSLES.Interface
 import Backend.GLSLES.IR
 import Backend.GLSLES.Lower
@@ -51,6 +52,15 @@ directiveValue needle (value :: rest) =
      then Just (pack (drop (length (unpack needle)) (unpack value)))
      else directiveValue needle rest
 
+floatPrecision : List String -> Either String ShaderPrecision
+floatPrecision values = case directiveValue "float-precision=" values of
+  Nothing => Right (shaderPrecision defaultFloatWidth)
+  Just "lowp" => Right Low
+  Just "mediump" => Right Medium
+  Just "highp" => Right High
+  Just "" => Left "float-precision directive requires lowp, mediump, or highp"
+  Just value => Left ("float-precision must be lowp, mediump, or highp, received " ++ value)
+
 requireSingleShaderExport : List (Name, String) -> Core (Name, String)
 requireSingleShaderExport [] =
   backendError "no shader entry; add %export \"glsles:fragment|name=in,name=uniform\""
@@ -96,9 +106,11 @@ writeRequestedIR defs program = do
       renderedIR <- fromEither (dumpFragmentIR program)
       writeShader path renderedIR
 
-writeFragmentOutput : String -> String -> FragmentProgram -> Core String
-writeFragmentOutput outputDir outfile program = do
-  source <- fromEither (emitFragment program)
+writeFragmentOutput : Ref Ctxt Defs -> String -> String -> FragmentProgram -> Core String
+writeFragmentOutput defs outputDir outfile program = do
+  session <- getSession {c = defs}
+  precision <- fromEither (floatPrecision (directives session))
+  source <- fromEither (emitFragmentWithPrecision precision program)
   let output = outputDir ++ "/" ++ outfile ++ ".frag"
   writeShader output source
   pure output
@@ -114,7 +126,7 @@ compileGLSLES defs syn tmpDir outputDir term outfile = do
   spec <- checkShaderInterface defs shader
   program <- lowerExportedShader spec shader
   writeRequestedIR defs program
-  output <- writeFragmentOutput outputDir outfile program
+  output <- writeFragmentOutput defs outputDir outfile program
   pure (Just output)
 
 public export

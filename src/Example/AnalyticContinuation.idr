@@ -1,5 +1,10 @@
 module Example.AnalyticContinuation
 
+-- Bounded/local-domain capability fixture: this renders Taylor-disc
+-- reveal geometry over an already-known rational portrait.  It is not the live
+-- whole-plane holomorphic evolution owned by isomorphismes/analytic-continuation.
+-- See docs/holomorphic-explorer-follower.md for the backend ownership boundary.
+
 import Shader.ContinuationOverlay
 import Shader.PhasePortrait
 import Shader.Source
