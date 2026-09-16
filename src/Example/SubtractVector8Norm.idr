@@ -6,6 +6,11 @@ import Shader.Source
 
 ||| Subtract two 8D vectors represented as two vec4 chunks and reduce the
 ||| eight-component difference to its Euclidean norm.
+-- SVec 4 = one four-component shader-vector chunk.
+-- vsub a b = vector subtraction, component by component.
+-- dot d d = sum of the squared components of d.
+-- sqrtF = floating-point square root; here it turns squared norm into Euclidean norm.
+-- vec4 result result result 1.0 = display the scalar norm as grayscale RGB.
 %export "glsles:fragment|u_a0=uniform,u_a1=uniform,u_b0=uniform,u_b1=uniform"
 subtract_vector8_norm :
   SVec 4 -> SVec 4 -> SVec 4 -> SVec 4 -> SVec 4

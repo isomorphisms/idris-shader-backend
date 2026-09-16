@@ -8,9 +8,18 @@ import Shader.Source
 ||| difference to ||a-b|| e1 with an orientation-preserving orthogonal map.
 |||
 ||| For a non-degenerate difference, the first Householder reflection sends
-||| d to ||d||e1.  A fixed reflection that flips e2 leaves ||d||e1 unchanged;
+||| d to ||d||e1. A fixed reflection that flips e2 leaves ||d||e1 unchanged;
 ||| composing the two reflections has determinant +1, so the composition is a
-||| proper high-dimensional rotation.  If d is already on +e1, use identity.
+||| proper high-dimensional rotation. If d is already on +e1, use identity.
+-- SVec 4 = one four-component shader-vector chunk.
+-- vsub a b = vector subtraction, component by component.
+-- dot a b = multiply matching components and add the products.
+-- sqrtF = floating-point square root; maxF = floating-point maximum.
+-- vec4 / vec3 = construct four- / three-component shader vectors.
+-- scale s v = multiply every component of v by the scalar s.
+-- x/y/z/w = first/second/third/fourth vector components.
+-- residual = Euclidean size of the seven coordinates that should end near zero.
+-- vec4 axis_ratio residual residual 1.0 = pack the two diagnostics into RGBA output.
 %export "glsles:fragment|u_a0=uniform,u_a1=uniform,u_b0=uniform,u_b1=uniform"
 rotate_difference8_to_e1 :
   SVec 4 -> SVec 4 -> SVec 4 -> SVec 4 -> SVec 4

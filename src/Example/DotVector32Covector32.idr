@@ -7,6 +7,11 @@ import Shader.Source
 ||| A 32-component Euclidean-coordinate vector/covector contraction.
 ||| Each mathematical 32-vector is stored as eight plain vec4 chunks: the
 ||| dimension is deliberately independent of GPU tile, task, or lane width.
+-- SVec 4 = one four-component shader-vector chunk.
+-- v0..v7 = the eight vector chunks; c0..c7 = the eight covector chunks.
+-- dot v0 c0 = four matching multiplications followed by their sum.
+-- p0..p7 = the eight partial dot products; adding them gives the 32D contraction.
+-- vec4 result result result 1.0 = display the scalar result as grayscale RGB.
 %export "glsles:fragment|u_v0=uniform,u_v1=uniform,u_v2=uniform,u_v3=uniform,u_v4=uniform,u_v5=uniform,u_v6=uniform,u_v7=uniform,u_c0=uniform,u_c1=uniform,u_c2=uniform,u_c3=uniform,u_c4=uniform,u_c5=uniform,u_c6=uniform,u_c7=uniform"
 dot_vector32_covector32 :
   SVec 4 -> SVec 4 -> SVec 4 -> SVec 4 ->

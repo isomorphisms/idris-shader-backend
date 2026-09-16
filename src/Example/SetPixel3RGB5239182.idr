@@ -6,6 +6,11 @@ import Shader.Source
 
 ||| On a four-pixel-wide framebuffer, set zero-based pixel 3 (the fourth
 ||| pixel) to RGB (52, 39, 182) and leave the other three pixels black.
+-- glsles = GLSL ES; fragment = the per-fragment/pixel shader stage.
+-- v_ndc = normalized device coordinates supplied as an input to this fragment.
+-- SVec n = shader vector with exactly n components; Idris checks the width.
+-- x ndc = the first (horizontal) coordinate of that two-component vector.
+-- vec4 r g b a = make the four-component red/green/blue/alpha result vector.
 %export "glsles:fragment|v_ndc=in"
 set_pixel_3_to_rgb_52_39_182 : SVec 2 -> SVec 4
 set_pixel_3_to_rgb_52_39_182 ndc =
