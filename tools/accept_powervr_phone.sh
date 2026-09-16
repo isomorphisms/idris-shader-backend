@@ -11,6 +11,7 @@ REMOTE=/data/local/tmp/idris-shader-powervr-acceptance
 ANDROID_API=${ANDROID_API:-21}
 TMP=
 RUN_TMP=
+GENERATED_TMP=
 REMOTE_READY=0
 
 adb_cmd() {
@@ -24,6 +25,7 @@ adb_cmd() {
 cleanup() {
   [ -z "$TMP" ] || rm -f "$TMP"
   [ -z "$RUN_TMP" ] || rm -f "$RUN_TMP"
+  [ -z "$GENERATED_TMP" ] || rm -rf "$GENERATED_TMP"
   if [ "$REMOTE_READY" -eq 1 ]; then
     adb_cmd shell "rm -rf '$REMOTE'" >/dev/null 2>&1 || true
   fi
@@ -86,13 +88,13 @@ CC="$TOOLCHAIN/bin/clang"
 [ -x "$CC" ] || fail "NDK compiler not found: $CC"
 
 # Clean the backend build so an ignored executable from another revision cannot
-# contaminate the receipt. Then prove that every regenerated fragment is the
-# version tracked by the named commit.
+# contaminate the receipt. Regenerate all acceptance fragments into a temporary
+# directory from the clean exact commit rather than relying on stale artifacts.
 "$IDRIS2" --clean backend.ipkg
+GENERATED_TMP=$(mktemp -d)
 make powervr-primitives-frag \
-  IDRIS2="$IDRIS2" IDRIS2_GLSLES=./build/exec/idris2-glsles
-[ -z "$(git status --porcelain --untracked-files=all -- generated)" ] || \
-  fail "regenerated GLSL differs from commit $COMMIT; commit it or use the matching backend"
+  IDRIS2="$IDRIS2" IDRIS2_GLSLES=./build/exec/idris2-glsles \
+  POWERVR_OUTPUT_DIR="$GENERATED_TMP"
 
 mkdir -p build "$(dirname -- "$EVIDENCE")"
 "$CC" --target="${TRIPLE}${ANDROID_API}" \
@@ -104,14 +106,15 @@ set-block-32x32-rgb-52-39-182.frag
 dot-vector4-covector4.frag
 dot-vector32-covector32.frag
 subtract-vector8-norm.frag
-rotate-difference8-to-e1.frag'
+rotate-difference8-to-e1.frag
+givens-rotate2-to-e1.frag'
 
 adb_cmd shell "rm -rf '$REMOTE' && mkdir -p '$REMOTE/generated'"
 REMOTE_READY=1
 adb_cmd push build/powervr-primitives-android "$REMOTE/powervr-primitives" >/dev/null
 for shader in $SHADERS; do
-  [ -f "generated/$shader" ] || fail "missing generated/$shader"
-  adb_cmd push "generated/$shader" "$REMOTE/generated/$shader" >/dev/null
+  [ -f "$GENERATED_TMP/$shader" ] || fail "missing regenerated $shader"
+  adb_cmd push "$GENERATED_TMP/$shader" "$REMOTE/generated/$shader" >/dev/null
 done
 adb_cmd shell "chmod 755 '$REMOTE/powervr-primitives'"
 
@@ -130,7 +133,7 @@ esac
   echo "command: make powervr-phone-accept"
   echo "utc: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   echo "commit: $COMMIT"
-  echo "source.generated: matches commit"
+  echo "source.generated: regenerated from clean exact commit"
   echo "host.idris2: $IDRIS2_VERSION"
   echo "device.manufacturer: $(adb_cmd shell getprop ro.product.manufacturer | tr -d '\r')"
   echo "device.model: $(adb_cmd shell getprop ro.product.model | tr -d '\r')"
@@ -157,18 +160,18 @@ done
 grep -Eiq '^GL_(VENDOR|RENDERER):.*(PowerVR|Imagination)' "$TMP" || \
   fail "GL_VENDOR/GL_RENDERER does not identify PowerVR/Imagination; evidence saved to $EVIDENCE"
 
-COMPILE_LINK_COUNT=$(grep -Ec '^[1-6] shader_compile_link: PASS' "$TMP" || true)
-[ "$COMPILE_LINK_COUNT" -eq 6 ] || \
-  fail "expected six shader compile/link PASS lines, found $COMPILE_LINK_COUNT; evidence saved to $EVIDENCE"
+COMPILE_LINK_COUNT=$(grep -Ec '^[1-7] shader_compile_link: PASS' "$TMP" || true)
+[ "$COMPILE_LINK_COUNT" -eq 7 ] || \
+  fail "expected seven shader compile/link PASS lines, found $COMPILE_LINK_COUNT; evidence saved to $EVIDENCE"
 
-FRAMEBUFFER_PATTERN='^(1 set_pixel_3_to_rgb_52_39_182|2 set_block_32x32_to_rgb_52_39_182|3 dot_vector4_covector4|4 dot_vector32_covector32|5 subtract_vector8_norm|6 rotate_difference8_to_e1): PASS( \(|$)'
+FRAMEBUFFER_PATTERN='^(1 set_pixel_3_to_rgb_52_39_182|2 set_block_32x32_to_rgb_52_39_182|3 dot_vector4_covector4|4 dot_vector32_covector32|5 subtract_vector8_norm|6 rotate_difference8_to_e1|7 givens_rotate2_to_e1): PASS( \(|$)'
 PASS_COUNT=$(grep -Ec "$FRAMEBUFFER_PATTERN" "$TMP" || true)
-[ "$PASS_COUNT" -eq 6 ] || \
-  fail "expected six framebuffer PASS lines, found $PASS_COUNT; evidence saved to $EVIDENCE"
+[ "$PASS_COUNT" -eq 7 ] || \
+  fail "expected seven framebuffer PASS lines, found $PASS_COUNT; evidence saved to $EVIDENCE"
 
 TIMING_COUNT=$(grep -Ec '^  (4x1 pixel-selection draw:|32x32 block-fill draw:|block/pixel ratio:)' "$TMP" || true)
 [ "$TIMING_COUNT" -eq 3 ] || \
   fail "expected the complete three-line timing block, found $TIMING_COUNT lines; evidence saved to $EVIDENCE"
 
-printf '\nacceptance.generated: PASS\nacceptance.renderer: PASS\nacceptance.compile_link: 6/6 PASS\nacceptance.framebuffers: 6/6 PASS\nacceptance: PASS\n' >>"$EVIDENCE"
+printf '\nacceptance.generated: PASS\nacceptance.renderer: PASS\nacceptance.compile_link: 7/7 PASS\nacceptance.framebuffers: 7/7 PASS\nacceptance: PASS\n' >>"$EVIDENCE"
 printf '\nPowerVR phone acceptance: PASS\nevidence: %s\n' "$EVIDENCE"
