@@ -131,7 +131,7 @@ record EntrySpec where
   entryInterface : List InterfaceVar
   resultTy : ValueTy
 
-||| A typed operand in the backend's linear shader IR.
+||| A typed operand in the backend's shader IR.
 public export
 data Operand : ValueTy -> Type where
   OLocal : String -> Operand ty
@@ -227,11 +227,24 @@ record Binding where
   bindingName : String
   bindingRhs : Rhs bindingTy
 
+||| Structured statements are part of the checked shader IR. A source case is
+||| represented as a branch before target code generation; it is not flattened
+||| into eagerly computed values and rediscovered later.
+public export
+data Statement : Type where
+  SBinding : Binding -> Statement
+  SIf : (resultTy : ValueTy) ->
+        (resultName : String) ->
+        Operand TBool ->
+        List Statement -> Operand resultTy ->
+        List Statement -> Operand resultTy ->
+        Statement
+
 public export
 record FragmentProgram where
   constructor MkFragmentProgram
   spec : EntrySpec
-  bindings : List Binding
+  statements : List Statement
   result : Operand (TVec 4)
 
 public export

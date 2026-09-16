@@ -21,7 +21,7 @@ ShaderDefs = List (Name, ANFDef)
 record LowerState where
   constructor MkLowerState
   nextTemp : Nat
-  reversedBindings : List Binding
+  reversedStatements : List Statement
 
 record Lower a where
   constructor MkLower
@@ -56,7 +56,7 @@ emit {ty} rhs = MkLower $ \state =>
   let name = "_idris_t" ++ show (nextTemp state)
       binding = MkBinding ty name rhs
       state' = MkLowerState (S (nextTemp state))
-                            (binding :: reversedBindings state)
+                            (SBinding binding :: reversedStatements state)
    in Right (state', OLocal name)
 
 lookupLocal : Int -> Env -> Either String SomeOperand
@@ -344,18 +344,6 @@ findConBranch wanted (MkAConAlt name _ _ _ body :: rest) =
     "True" => if wanted then Just body else findConBranch wanted rest
     _ => findConBranch wanted rest
 
-selectOperands : Operand TBool -> SomeOperand -> SomeOperand -> Lower SomeOperand
-selectOperands condition (PackOperand TBool (OBool True))
-                         (PackOperand TBool (OBool False)) =
-  pure (PackOperand TBool condition)
-selectOperands condition (PackOperand leftTy left) (PackOperand rightTy right) =
-  case decEq leftTy rightTy of
-    Yes Refl => do
-      result <- emit (RSelect condition left right)
-      pure (PackOperand leftTy result)
-    No _ => failLower ("case branches have different shader types: " ++
-                       show leftTy ++ " and " ++ show rightTy)
-
 mutual
   lowerCall : ShaderDefs -> List Name -> Env -> Name -> List AVar -> Lower SomeOperand
   lowerCall definitions stack env name arguments = do
@@ -370,6 +358,31 @@ mutual
         callEnv <- liftEither (bindArguments params values)
         lowerANF definitions (name :: stack) callEnv body
       _ => failLower ("shader call does not name a first-order function: " ++ show name)
+
+  lowerStructuredCase : ShaderDefs -> List Name -> Env -> Operand TBool ->
+                        ANF -> ANF -> Lower SomeOperand
+  lowerStructuredCase definitions stack env condition trueBody falseBody =
+    MkLower $ \state => do
+      let resultName = "_idris_t" ++ show (nextTemp state)
+          branchStart = MkLowerState (S (nextTemp state)) []
+      (falseState, falseValue) <-
+        runLower (lowerANF definitions stack env falseBody) branchStart
+      let trueStart = MkLowerState (nextTemp falseState) []
+      (trueState, trueValue) <-
+        runLower (lowerANF definitions stack env trueBody) trueStart
+      case (trueValue, falseValue) of
+        (PackOperand trueTy trueResult, PackOperand falseTy falseResult) =>
+          case decEq trueTy falseTy of
+            No _ => Left ("case branches have different shader types: " ++
+                          show trueTy ++ " and " ++ show falseTy)
+            Yes Refl =>
+              let statement =
+                    SIf trueTy resultName condition
+                      (reverse (reversedStatements trueState)) trueResult
+                      (reverse (reversedStatements falseState)) falseResult
+                  final = MkLowerState (nextTemp trueState)
+                                       (statement :: reversedStatements state)
+               in Right (final, PackOperand trueTy (OLocal resultName))
 
   lowerConstCase : ShaderDefs -> List Name -> Env -> AVar ->
                    List AConstAlt -> Maybe ANF -> Lower SomeOperand
@@ -386,9 +399,7 @@ mutual
       | Nothing => failLower "boolean case has no false/default branch"
     Just trueBody <- pure trueBranch
       | Nothing => failLower "boolean case has no true/default branch"
-    falseValue <- lowerANF definitions stack env falseBody
-    trueValue <- lowerANF definitions stack env trueBody
-    selectOperands condition trueValue falseValue
+    lowerStructuredCase definitions stack env condition trueBody falseBody
 
   lowerConCase : ShaderDefs -> List Name -> Env -> AVar ->
                  List AConAlt -> Maybe ANF -> Lower SomeOperand
@@ -405,9 +416,7 @@ mutual
       | Nothing => failLower "boolean case has no false/default branch"
     Just trueBody <- pure trueBranch
       | Nothing => failLower "boolean case has no true/default branch"
-    falseValue <- lowerANF definitions stack env falseBody
-    trueValue <- lowerANF definitions stack env trueBody
-    selectOperands condition trueValue falseValue
+    lowerStructuredCase definitions stack env condition trueBody falseBody
 
   lowerANF : ShaderDefs -> List Name -> Env -> ANF -> Lower SomeOperand
   lowerANF _ _ env (AV _ variable) = liftEither (resolveVar env variable)
@@ -459,6 +468,6 @@ lowerFragment spec entryName definitions (MkAFun params body) = do
   let initial = MkLowerState 0 []
   (final, value) <- runLower (lowerANF definitions [entryName] env body) initial
   output <- expect (TVec 4) value
-  Right (MkFragmentProgram spec (reverse (reversedBindings final)) output)
+  Right (MkFragmentProgram spec (reverse (reversedStatements final)) output)
 lowerFragment _ entryName _ _ =
   Left ("exported shader entry is not a function: " ++ show entryName)
